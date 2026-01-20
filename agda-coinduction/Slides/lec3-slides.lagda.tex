@@ -1,0 +1,553 @@
+\input{preamble-base.tex}
+
+\def\lecturetitle{Coinductive Programming and Proving in Agda}
+\newcommand\courseyear{2026}
+\subtitle{Lecture 3: Coinduction case studies}
+\date{21 January 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{The delay monad}
+
+\begin{frame}[plain,noframenumbering]{Lecture plan}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+\begin{code}[hide]
+{-# OPTIONS --allow-unsolved-metas --guardedness --sized-types --cubical -WnoUnsupportedIndexedMatch #-}
+open import lec1-slides hiding (Bool; true; false; if_then_else_; not)
+open import lec2-slides
+
+open import Data.Bool.Base using (Bool; true; false; not; _∧_; _∨_; if_then_else_)
+
+module _ where
+
+module GuardedDelay where
+  open Guardedness
+  open import Relation.Binary.PropositionalEquality.Core
+\end{code}
+
+\begin{frame}{The delay monad}
+The \alert{delay monad} embeds potentially non-terminating computations in Agda:
+\begin{code}
+  mutual
+    data Delay (A : Set) : Set where
+      now    : A → Delay A
+      later  : Delay' A → Delay A
+
+    record Delay' (A : Set) : Set where
+      coinductive
+      field force : Delay A
+  open Delay' public
+\end{code}
+\end{frame}
+
+\begin{frame}{Delayed values}
+Classically, any $x : \data{Delay}~A$ is either $\fun{never}$ \\ or $\fun{laters}~k~a$ for some $k : \Nat$ and $a : A$:
+\begin{code}
+  never : Delay A
+  never = later (λ where .force → never)
+
+  laters : ℕ → A → Delay A
+  laters zero a = now a
+  laters (suc n) a = later
+    (λ where .force → laters n a)
+\end{code}
+\textbf{Exercise.} Implement $\fun{iter} : (A → A~⊎~B) → A → \data{Delay}~B$.
+\end{frame}
+
+\begin{frame}{Implementing bind for the delay monad}
+\begin{code}
+  _>>=_ : Delay A → (A → Delay B) → Delay B
+  now x >>= f = f x
+  later d >>= f = later λ where
+    .force → d .force >>= f
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Convergence of delayed values}
+\begin{code}[hide]
+  infix 3 _⇓_
+  variable d d₁ d₂ : A
+\end{code}
+\begin{code}
+  data _⇓_ {A} : Delay A → A → Set where
+    now : (x : A) → now x ⇓ x
+    later : d .force ⇓ x → later d ⇓ x
+
+  ⇓-unique : d ⇓ x → d ⇓ y → x ≡ y
+  ⇓-unique (now x) (now y) = refl
+  ⇓-unique (later p) (later q) = ⇓-unique p q
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Bisimulation of delayed values}
+\begin{code}
+  mutual
+    data _~_ {A} : Delay A → Delay A → Set where
+      now    : (x : A)  → now    x  ~ now    x
+      later  : x ~' y   → later  x  ~ later  y
+
+    record _~'_ (x y : Delay' A) : Set where
+      coinductive
+      field
+        force : x .force ~ y .force
+  open _~'_ public
+\end{code}
+\begin{code}[hide]
+  infix 5 _~_ _~'_
+\end{code}
+\end{frame}
+
+\begin{frame}{Monad laws for Delay}
+\begin{code}
+  refl~ : (x : Delay A) → x ~ x
+  refl~ (now x) = now x
+  refl~ (later x) = later λ where
+    .force → refl~ (x .force)
+
+  now->>=  : (x : A) (f : A → Delay B)
+           → now x >>= f ~ f x
+  now->>= x f = refl~ (f x)
+\end{code}
+\textbf{Exercise.} State and prove the second and third monad laws \fun{>>=-now} and \fun{>>=-assoc}.
+\begin{code}[hide]
+  >>=-now : (d : Delay A) → d >>= now ~ d
+  >>=-now (now x) = now x
+  >>=-now (later x) = later λ where
+    .force → >>=-now (x .force)
+
+  >>=-assoc : (d : Delay A)
+    → (f : A → Delay B) (g : B → Delay C)
+    → (d >>= f) >>= g ~ d >>= λ x → (f x >>= g)
+  >>=-assoc (now x) f g = refl~ (f x >>= g)
+  >>=-assoc (later d) f g = later λ where
+    .force → >>=-assoc (d .force) f g
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Weak bisimilarity}
+Since we don't really care about the number of \con{later}s, we can make more things bisimilar:
+\begin{code}
+  mutual
+    data _~D_ {A} : Delay A → Delay A → Set where
+      value  : d₁ ⇓ x → d₂ ⇓ x → d₁ ~D d₂
+      later  : d₁ ~D' d₂ → later d₁ ~D later d₂
+
+    record _~D'_ (x y : Delay' A) : Set where
+      coinductive
+      field force : x .force ~D y .force
+  open _~D'_ public
+\end{code}
+\end{frame}
+
+\begin{frame}{The partiality monad}
+Instead of making more elements bisimilar, we can quotient the \data{Delay} monad by $x ~ \fun{later}~x$.
+
+This leads to the definition of the \alert{partiality monad} by Altenkirch, Danielsson \& Kraus (FoSSaCS 2017)
+as a \emph{quotient inductive-inductive type} (QIIT).
+\end{frame}
+
+\section{Stream processors}
+
+\begin{code}[hide]
+module StreamProcessors where
+  open Guardedness
+  open InductiveIdentity
+  open GuardedBisimulation
+\end{code}
+
+\begin{frame}{Stream processors}
+A \alert{stream processor} describes how to transform a stream of $A$s into a stream of $B$s:
+\small \begin{code}
+  mutual
+    data SP (A B : Set) : Set where
+      get  : (A → SP A B)  → SP A B
+      put  : B → SP' A B   → SP A B
+
+    record SP' (A B : Set) : Set where
+      coinductive
+      field force : SP A B
+  open SP'
+\end{code}
+\normalsize There can only be a finite number of \con{get}s before there must be a \con{put}.
+\end{frame}
+
+\begin{frame}{Example stream processor: summing elements pairwise}
+\begin{code}
+  sum2by2 : SP ℕ ℕ
+  sum2by2 =
+    get λ x →
+    get λ y →
+    put (x + y)
+    λ where .force → sum2by2
+\end{code}
+\end{frame}
+
+\begin{frame}{Running a stream processor}
+\begin{code}
+  run : SP A B → Stream A → Stream B
+  run (get f) xs = run (f (xs .headS)) (xs .tailS)
+  run (put y sp)  xs .headS  = y
+  run (put y sp)  xs .tailS  = run (sp .force) xs
+
+  sum2by2-nats :
+    takeS 5 (run sum2by2 nats)
+    ≡ (1 ∷ 5 ∷ 9 ∷ 13 ∷ 17 ∷ [])
+  sum2by2-nats = refl
+\end{code}
+\end{frame}
+
+
+\begin{frame}{A slightly more interesting example}
+\textbf{Question.} What does the stream processor below do?
+\begin{code}
+  mutual
+    sums : SP ℕ ℕ
+    sums = get λ n → sumN n 0
+
+    sumN : ℕ → ℕ → SP ℕ ℕ
+    sumN zero a = put a λ where .force → sums
+    sumN (suc n) a = get λ k → sumN n (a + k)
+\end{code}
+Let's run it on $\fun{nats}$!
+\end{frame}
+
+\begin{frame}{Composing stream processors}
+If we have a $\data{SP}~A~B$ and a $\data{SP}~B~C$, we can apply them in sequence to a $\data{Stream}~A$ to get a $\data{Stream}~C$.
+
+\textbf{Exercise.} Do the same with a single processor:
+\begin{code}
+  compose : SP A B → SP B C → SP A C
+\end{code}
+\begin{code}[hide]
+  compose (put y f)  (get g)    = compose (f .force) (g y)
+  compose (get f)    p2         = get (λ x → compose (f x) p2)
+  compose p1         (put z g)  = put z (λ where .force → compose p1 (g .force))
+\end{code}
+\begin{code}
+  compose-correct :
+    (p1 : SP A B) (p2 : SP B C) (s : Stream A) →
+    run (compose p1 p2) s ~ run p2 (run p1 s)
+\end{code}
+\begin{code}[hide]
+  compose-correct (get f) p2 s = compose-correct (f (s .headS)) p2 (s .tailS)
+  compose-correct (put y f) (get g) s = compose-correct (f .force) (g y) s
+  compose-correct (put y f) (put z g) s .headS = refl
+  compose-correct (put y f) (put z g) s .tailS = compose-correct (put y f) (g .force) s
+\end{code}
+\end{frame}
+
+\section{Formal languages}
+
+\begin{frame}{Formal languages, coinductively}
+We can describe a formal language $l$ (= a set of strings) over an alphabet $A$ with two pieces of data:
+\begin{itemize}
+  \item whether it  is \alert{nullable} \\ (= contains the empty string)
+  \item for each $a ∈ A$, the \alert{derivative} $\delta_a(l) = \{ s~|~a\cdot s ∈ l \}$.
+\end{itemize}
+Note that this is a \emph{coinductive} description of formal languages.
+\end{frame}
+
+\begin{frame}{Formal languages as (infinite) tries}
+We can visualize a language as an infinite \alert{trie}:
+\begin{center}\includegraphics[width=.6\textwidth]{trie.png}\end{center}
+\end{frame}
+
+\begin{frame}{Coinductive formal languages in Agda}
+\begin{code}[hide]
+open import Relation.Binary.Definitions using (DecidableEquality)
+open import Relation.Nullary.Decidable using (Dec; yes; no; does)
+open import Function.Base using (id; const; _∘_)
+\end{code}
+\begin{code}
+module FormalLanguages
+  (A : Set) (_≟_ : DecidableEquality A) where
+
+  record Lang : Set where
+    coinductive
+    field
+      ν : Bool
+      δ : A → Lang
+  open Lang public
+\end{code}
+\end{frame}
+
+\begin{frame}{Some simple languages}
+\begin{code}
+  ∅ : Lang
+  ∅ .ν = false
+  ∅ .δ = λ _ → ∅
+
+  ε : Lang
+  ε .ν = true
+  ε .δ = λ _ → ∅
+
+  char : A → Lang
+  char a .ν = false
+  char a .δ b = if does (a ≟ b) then ε else ∅
+\end{code}
+\end{frame}
+
+\begin{frame}{Language membership and tabulation}
+\begin{code}
+  _∋_ : Lang → List A → Bool
+  l ∋ [] = l .ν
+  l ∋ (x ∷ xs) = l .δ x ∋ xs
+
+  trie : (List A → Bool) → Lang
+  trie f .ν = f []
+  trie f .δ a = trie (f ∘ (a ∷_))
+\end{code}
+\end{frame}
+
+\begin{frame}{Operations on languages}
+\begin{code}
+  complement : Lang → Lang
+  complement l .ν    = not (l .ν)
+  complement l .δ x  = complement (l .δ x)
+
+  _∪_ : Lang → Lang → Lang
+  (l₁ ∪ l₂) .ν    = l₁ .ν ∨ l₂ .ν
+  (l₁ ∪ l₂) .δ x  = l₁ .δ x ∪ l₂ .δ x
+
+  _∩_ : Lang → Lang → Lang
+  (l₁ ∩ l₂) .ν    = l₁ .ν ∧ l₂ .ν
+  (l₁ ∩ l₂) .δ x  = l₁ .δ x ∩ l₂ .δ x
+\end{code}
+\end{frame}
+
+\begin{frame}{Language concatenation}
+We run into a problem when defining concatenation of languages:
+\begin{code}[hide]
+  {-# NON_TERMINATING #-}
+\end{code}
+\begin{code}
+  _·_ : Lang → Lang → Lang
+  (l₁ · l₂) .ν    = l₁ .ν ∧ l₂ .ν
+  (l₁ · l₂) .δ x  = (if l₁ .ν then l₂ else ∅) ∪ (l₁ .δ x · l₂)
+\end{code}
+{\color{red}\underline{Error: Termination checking failed for \_·\_.}}
+{\color{red}\underline{Problematic calls: $l₁~.δ~x~·~l₂$}}
+
+The guardedness is obscured by the call to $\fun{∪}$.
+\end{frame}
+
+
+\begin{frame}{Sized types to the rescue}
+\begin{code}[hide]
+module SizedFormalLanguages
+  (A : Set) (_≟_ : DecidableEquality A) where
+
+  open import Size
+  open InductiveIdentity
+  variable i : Size
+\end{code}
+\begin{code}
+  record Lang (i : Size) : Set where
+    coinductive
+    field
+      ν  : Bool
+      δ  : {j : Size< i} → A → Lang j
+  open Lang public
+\end{code}
+\end{frame}
+
+\begin{code}[hide]
+  _∋_ : Lang ∞ → List A → Bool
+  l ∋ []        = l .ν
+  l ∋ (x ∷ xs)  = l .δ x ∋ xs
+
+  trie : (List A → Bool) → Lang i
+  trie f .ν    = f []
+  trie f .δ a  = trie (f ∘ (a ∷_))
+
+  ∅ : Lang i
+  ∅ .ν    = false
+  ∅ .δ _  = ∅
+
+  ε : Lang i
+  ε .ν    = true
+  ε .δ _  = ∅
+
+  char : A → Lang i
+  char a .ν    = false
+  char a .δ b  = if does (a ≟ b) then ε else ∅
+
+  complement : Lang i → Lang i
+  complement l .ν    = not (l .ν)
+  complement l .δ x  =
+    complement (l .δ x)
+
+  _∩_ : Lang i → Lang i → Lang i
+  (l₁ ∩ l₂) .ν    = l₁ .ν ∧ l₂ .ν
+  (l₁ ∩ l₂) .δ x  =
+    l₁ .δ x ∩ l₂ .δ x
+\end{code}
+
+\begin{frame}{Language concatenation with sizes}
+We can define union to be size-preserving:
+\begin{code}
+  _∪_ : Lang i → Lang i → Lang i
+  (l₁ ∪ l₂) .ν    = l₁ .ν ∨ l₂ .ν
+  (l₁ ∪ l₂) .δ x  = l₁ .δ x ∪ l₂ .δ x
+\end{code}
+This allows the definition of concatenation to pass:
+\begin{code}
+  _·_ : Lang i → Lang i → Lang i
+  (l₁ · l₂) .ν    = l₁ .ν ∧ l₂ .ν
+  (l₁ · l₂) .δ x  = (if l₁ .ν then l₂ else ∅) ∪ (l₁ .δ x · l₂)
+\end{code}
+\end{frame}
+
+\begin{frame}{Definition of Kleene star}
+\begin{code}
+  _* : Lang i → Lang i
+  (l *) .ν    = true
+  (l *) .δ x  = l .δ x · (l *)
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Arden's rule}
+\alert{Arden's rule} states: for a non-nullable language $k$, if $l = (k~\fun{·}~l)~\fun{∪}~m$, then $l = (k~\fun{*})~\fun{·}~m$
+
+\textbf{Question.} How do we state this rule in Agda?
+\pause
+\textbf{Answer.} Using bisimulation!\footnote{or path equality in cubical Agda.}
+\end{frame}
+
+\begin{frame}{Bisimulation of languages}
+\begin{code}[hide]
+  infix 6 _~⟨_⟩~_
+\end{code}
+\begin{code}
+  record _~⟨_⟩~_
+    (l₁ : Lang ∞) (i : Size) (l₂ : Lang ∞) : Set where
+    coinductive
+    field
+      ν  : l₁ .ν ≡ l₂ .ν
+      δ  : {j : Size< i} (x : A) → l₁ .δ x ~⟨ j ⟩~ l₂ .δ x
+  open _~⟨_⟩~_
+\end{code}
+\end{frame}
+
+\begin{frame}{Arden's rule in Agda}
+Now we can state Arden's rule:
+\begin{code}
+  arden : (k l m : Lang ∞) →
+    l ~⟨ ∞ ⟩~ (k · l) ∪ m → l ~⟨ ∞ ⟩~ (k *) · m
+\end{code}
+\begin{code}[hide]
+  arden = {!   !}
+\end{code}
+For the full proof, see \emph{Equational Reasoning about Formal Languages in
+Coalgebraic Style} by Andreas Abel (2016).
+\end{frame}
+
+
+\begin{comment}
+
+\begin{frame}{Exercises (part 1)}
+\begin{itemize}
+\item Prove reflexivity, symmetry, and transitivity of bisimulation.
+\item Prove associativity, commutativity, and idempotence of \fun{\_∪\_}
+\item Prove that \fun{∅} is neutral for \fun{\_∪\_}
+\item Prove that \fun{\_∪\_} and \fun{\_·\_} preserve bisimulation
+\item Prove that \fun{\_·\_} distributes over \fun{\_∪\_}
+\item Prove that \fun{\_·\_} is associative
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}{Exercises (part 2)}
+\begin{itemize}
+\item Prove that \fun{∅} is absorbing for \fun{\_·\_}
+\item Prove that \fun{ε} is neutral for \fun{\_·\_}
+\item Prove that $\fun{∅}~\fun{*} = \fun{ε}$
+\item Prove that $(l~\fun{*})~\fun{·}~(l~\fun{*}) = l~\fun{*}$
+\item Prove that $(l~\fun{*})~\fun{*} = l~\fun{*}$
+\item Prove that $l~\fun{*} = \fun{ε}~\fun{∪}~(l~\fun{·}~l~\fun{*})$
+\item Prove
+\end{itemize}
+\end{frame}
+
+\end{comment}
+
+\begin{comment}
+
+\section{Wander types}
+
+\begin{frame}
+\begin{code}
+data ZeroOne : Set
+record ZeroOne' : Set
+
+data ZeroOne where
+  Zero : ZeroOne' → ZeroOne
+  One  : ZeroOne  → ZeroOne
+
+record ZeroOne' where
+  coinductive
+  field force : ZeroOne
+open ZeroOne' public
+
+allZeros : ZeroOne
+allZeros = Zero λ where .force → allZeros
+
+alternate01 : ZeroOne
+alternate01 = Zero (λ where .force → One alternate01)
+
+-- allOnes : ZeroOne
+-- allOnes = One allOnes
+--               ^^^^^^^
+-- Termination checking failed for the following functions:
+--   allOnes
+-- Problematic calls:
+--   allOnes
+\end{code}
+\end{frame}
+\end{comment}
+
+\begin{comment}
+\section{Coinductive graphs}
+
+\begin{frame}
+
+\end{frame}
+
+\end{comment}
+
+\section*{Conclusion}
+
+\begin{frame}{References} \footnotesize
+\begin{itemize}
+\item Abel \& Pientka (JFP 2016): \emph{Well-founded recursion with copatterns and sized types.}
+\item Ghani, Hancock \& Pattinson (LMCS 2009): \emph{Representations of stream processors using nested fixed points.}
+\item Capretta (LMCS 2005): \emph{General Recursion Via Coinductive Types.}
+\item Altenkirch, Danielsson \& Kraus (FoSSaCS 2017): \emph{Partiality, Revisited: The Partiality Monad as a Quotient Inductive-Inductive Type.}
+\item Abel (2016): \emph{Equational Reasoning about Formal Languages in Coalgebraic Style.}
+\item Capretta (): \emph{Wander types: A formalization of coinduction-recursion}
+\item Kidney \& Wu (POPL 2025): \emph{Formalising Graph Algorithms with Coinduction}
+\end{itemize}
+\end{frame}
+
+
+\end{document}
+
+
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% LaTeX-command: "latex -shell-escape"
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:

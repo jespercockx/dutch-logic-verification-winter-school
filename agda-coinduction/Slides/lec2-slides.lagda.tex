@@ -1,0 +1,700 @@
+\input{preamble-base.tex}
+
+\def\lecturetitle{Coinductive Programming and Proving in Agda}
+\newcommand\courseyear{2026}
+\subtitle{Lecture 2: Coinductive proving in Agda}
+\date{21 January 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}[plain,noframenumbering]{Lecture plan}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+\begin{code}[hide]
+{-# OPTIONS --allow-unsolved-metas --guardedness --sized-types --cubical -WnoUnsupportedIndexedMatch #-}
+open import lec1-slides
+\end{code}
+
+
+
+\section{Curry-Howard}
+
+\begin{frame}{Curry-Howard for propositional logic}
+We can interpret logical propositions as the \alert{types} of all their possible proofs.
+\begin{center} \small
+\begin{tabular}{r>{\columncolor{gray!30}}cl}
+\textbf{Propositional logic} & & \textbf{Type system} \\
+conjunction & $P\ \prod\ Q$ & pair type \\
+disjunction & $\data{Either}\ P\ Q$ & either type \\
+implication & $P \rightarrow Q$ & function type \\
+truth & $\toptype$ & unit type \\
+falsity & $\bottomtype$ & empty type \\
+\end{tabular}
+\end{center}
+To prove a proposition, we just implement a function of the corresponding type!
+\end{frame}
+
+
+\begin{code}[hide]
+modusPonens : {P Q : Set} → (P → Q) → P → Q
+modusPonens f x = f x
+\end{code}
+
+\begin{code}[hide]
+cases : {P Q R : Set}
+      → Either P Q → (P → R) → (Q → R) → R
+cases (left x)   f g = f x
+cases (right y)  f g = g y
+\end{code}
+
+\begin{code}[hide]
+¬_ : Set → Set
+¬ A = A → ⊥
+\end{code}
+
+
+
+\begin{frame}{Constructive logic}
+In classical logic we can prove certain `non-constructive' statements:
+\begin{itemize}
+\item $P \lor (\lnot P)$ \hfill (excluded middle)
+\item $\lnot \lnot P \Rightarrow P$ \hfill (double negation elimination)
+\end{itemize}
+However, Agda uses a \alert{constructive logic}: a proof of $A \lor B$ gives us a \alert{decision procedure}
+to tell whether $A$ or $B$ holds.
+
+When $P$ is unknown, it's impossible to decide whether $P$ or $\lnot P$ holds,
+so the excluded middle is \alert{unprovable} in Agda.
+\end{frame}
+
+\begin{frame}{From classical to constructive logic}
+Consider the proposition $P$ (``$P$ is true'') vs.~ $\lnot\lnot P$ (``It would be absurd if $P$ were false'').
+
+Classical logic can't tell the difference between the two, but constructive logic can.
+
+\textbf{Theorem} (G\"odel and Gentzen). $P$ is provable in classical logic if and only if $\lnot\lnot P$ is provable in constructive logic.
+
+\textbf{Exercise.} Prove that the double negation of the excluded middle holds in Agda.
+\end{frame}
+
+
+\begin{frame}{Defining predicates}
+  We can define a predicate on type $A$ as a  \alert{dependent type} with base type $A$. For example:
+\begin{code}
+data IsEven : ℕ → Set where
+  e-zero : IsEven zero
+  e-suc2 : IsEven n → IsEven (suc (suc n))
+
+two-is-even : IsEven 2
+two-is-even = e-suc2 e-zero
+
+five-is-not-even : IsEven 5 → ⊥
+five-is-not-even (e-suc2 (e-suc2 ()))
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Induction in Agda}
+In Agda, a \alert{proof by induction} is simply a function using pattern matching and recursion:
+\begin{code}
+double : ℕ → ℕ
+double zero     = zero
+double (suc m)  = suc (suc (double m))
+
+double-even : (n : ℕ) → IsEven (double n)
+double-even zero     = e-zero
+double-even (suc m)  = e-suc2 (double-even m)
+\end{code}
+\end{frame}
+
+\begin{frame}{Proving things about programs}
+  \textbf{General rule of thumb:} A proof about a function often follows the same structure as that function:
+  \begin{itemize}
+    \item To prove something about a function by pattern matching, the proof will also use pattern matching (= \alert{proof by cases})
+    \item To prove something about a recursive function, the proof will also be recursive (= \alert{proof by induction})
+  \end{itemize}
+\end{frame}
+
+\section{Properties of coinductive types}
+
+\begin{frame}{Finite colists}
+\data{Finite} is an \alert{inductive} predicate on a (mixed) coinductive type:
+\begin{code}[hide]
+module FiniteInfinite where
+  open Guardedness
+  variable x xs : A
+\end{code}
+\begin{code}
+  data Finite {A : Set} : Colist A → Set where
+    [] : Finite []
+    -∷_ : Finite (xs .force) → Finite (x ∷ xs)
+
+  fromListFin : (xs : List A) → Finite (fromList xs)
+  fromListFin [] = []
+  fromListFin (x ∷ xs) = -∷ fromListFin xs
+\end{code}
+\end{frame}
+
+\begin{frame}{Converting back to a list}
+We can convert a finite colist back to a list:
+\begin{code}
+  toList : (xs : Colist A) → Finite xs → List A
+  toList []        []        = []
+  toList (x ∷ xs)  (-∷ fin)  = x ∷ toList (xs .force) fin
+\end{code}
+\textbf{Question.} Is this function using induction or coinduction?
+\end{frame}
+
+\begin{frame}{Infinite colists}
+\data{Infinite} is a \alert{coinductive} predicate on colists:
+\begin{code}
+  mutual
+    data Infinite {A : Set} : Colist A → Set where
+      -∷_ : Infinite' xs → Infinite (x ∷ xs)
+
+    record Infinite' (xs : Colist' A) : Set where
+      coinductive
+      field force : Infinite (xs .force)
+  open Infinite' public
+\end{code}
+\textbf{Exercise.} Prove that \fun{fromStream} always produces an infinite colist.
+\begin{code}[hide]
+  fromStreamInf : (xs : Stream A) → Infinite (fromStream xs)
+  fromStreamInf xs = -∷ λ where .force → fromStreamInf (xs .tailS)
+\end{code}
+\end{frame}
+
+\begin{frame}{Converting back to a stream}
+\textbf{Exercise.} Implement the following function:
+\begin{code}
+  toStream :
+    (xs : Colist A) → Infinite xs → Stream A
+\end{code}
+\begin{code}[hide]
+  toStream (x ∷ xs) (-∷ inf) .headS = x
+  toStream (x ∷ xs) (-∷ inf) .tailS = toStream (xs .force) (inf .force)
+\end{code}
+\textbf{Question.} What should the function do in the case of an empty colist?
+
+\textbf{Question.} Is this function using induction or coinduction?
+\end{frame}
+
+\begin{frame}{Finite or infinite?}
+\textbf{Question.} Can we prove the following?
+\begin{code}
+  finite-or-infinite : (xs : Colist A) →
+    Finite xs ⊎ Infinite xs
+\end{code} \pause
+\textbf{Answer.} No, but we can prove this instead:
+\begin{code}
+  infinite-not-finite : Infinite xs → ¬ (Finite xs)
+  not-finite-infinite : ¬ (Finite xs) → Infinite xs
+\end{code}
+where $¬~A = A → ⊥$. \textbf{Exercise.} Do it!
+\begin{code}[hide]
+  finite-or-infinite xs = {!   !}
+  infinite-not-finite = {!   !}
+  not-finite-infinite = {!   !}
+\end{code}
+\end{frame}
+
+\section{The identity type}
+
+\begin{frame}{The identity type}
+The \alert{identity type} $x~\Id~y$ says $x$ and $y$ are equal:
+\begin{code}[hide]
+variable x y z : A
+module InductiveIdentity where
+\end{code}
+\begin{code}
+  data _≡_ {A : Set} : A → A → Set where
+    refl : x ≡ x
+\end{code}
+\begin{code}[hide]
+  infix 4 _≡_
+\end{code}
+The constructor $\refl$ proves that two terms are equal if they have the same normal form:
+\begin{code}
+  one-plus-one : 1 + 1 ≡ 2
+  one-plus-one = refl
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Quiz question}
+\textbf{Question.} What is the type of the Agda expression $\lambda~b \to (b~\Id~\true)$?
+\begin{enumerate}
+\item $\data{Bool} \to \data{Bool}$
+\item $\data{Bool} \to \data{Set}$
+\item $(b : \data{Bool}) \to b~\Id~\true$
+\item It is not a well-typed expression
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Application of the identity type: \\ Writing test cases}
+One use case of the identity type is for writing test cases:
+\begin{code}
+  test₁ : length (42 ∷ []) ≡ 1
+  test₁ = refl
+
+  test₂ : length (map (1 +_) (0 ∷ 1 ∷ 2 ∷ [])) ≡ 3
+  test₂ = refl
+\end{code}
+The test cases are run \alert{each time the file is loaded}!
+\end{frame}
+
+\begin{frame}{Proving correctness of functions}
+We can use the identity type to prove the correctness of functional programs.
+
+\textbf{Example.}
+\begin{code}[hide]
+  module NotNotSimple where
+\end{code}
+\begin{code}
+    not-not : (b : Bool) → not (not b) ≡ b
+    not-not true   = refl
+    not-not false  = refl
+\end{code}
+\end{frame}
+
+
+\begin{frame}{Pattern matching on $\texttt{refl}$}
+  If we have a proof of $x~\Id~y$ as input, we can \alert{pattern match} on the constructor $\refl$
+  to show Agda that $x$ and $y$ are equal:
+\begin{code}
+  castVec : m ≡ n → Vec A m → Vec A n
+  castVec refl xs = xs
+\end{code}
+When you pattern match on $\refl$, Agda applies \alert{unification} to the two sides of the equality.
+\end{frame}
+
+\begin{frame}{Properties of equality}
+\begin{code}
+  sym : x ≡ y → y ≡ x
+  sym refl = refl
+
+  trans : x ≡ y → y ≡ z → x ≡ z
+  trans refl refl = refl
+
+  cong : (f : A → B) → x ≡ y → f x ≡ f y
+  cong f refl = refl
+\end{code}
+\end{frame}
+
+\begin{frame}{From lists to colists and back}
+\textbf{Exercise.} Prove that converting a list to a colist and back is the identity:
+\begin{code}[hide]
+  module FromListInv where
+    open Guardedness
+    open FiniteInfinite
+\end{code}
+\begin{code}
+    fromListInv : (xs : List A)
+      → toList (fromList xs) (fromListFin xs) ≡ xs
+\end{code}
+\begin{code}[hide]
+    fromListInv [] = refl
+    fromListInv (x ∷ xs) = cong (x ∷_) (fromListInv xs)
+\end{code}
+Can we prove the same about \fun{fromStream}?
+\end{frame}
+
+\section{Equational reasoning}
+
+\begin{frame}[fragile]{Equational reasoning}
+We can write more readable identity proofs by using \alert{equational reasoning operators}:
+\begin{code}
+  _≡⟨_⟩_ : (x : A) → x ≡ y → y ≡ z → x ≡ z
+  x ≡⟨ refl ⟩ q = q
+
+  _≡⟨⟩_ : (x : A) → x ≡ y → x ≡ y
+  x ≡⟨⟩ q = x ≡⟨ refl ⟩ q
+
+  _∎ : (x : A) → x ≡ x
+  x ∎ = refl
+\end{code}
+\begin{code}[hide]
+  infix   3  _∎
+  infixr  2  _≡⟨_⟩_
+  infixr  2  _≡⟨⟩_
+\end{code}
+\end{frame}
+
+\begin{code}[hide]
+  module ReasoningExamples where
+\end{code}
+
+\begin{frame}{Equational reasoning example}
+\begin{code}
+    reverse : List A → List A
+    reverse []        = []
+    reverse (x ∷ xs)  = reverse xs ++ (x ∷ [])
+
+    reverse-singleton : reverse (x ∷ []) ≡ x ∷ []
+    reverse-singleton {x = x} =
+      reverse (x ∷ [])        ≡⟨⟩
+      reverse [] ++ (x ∷ [])  ≡⟨⟩
+      [] ++ (x ∷ [])          ≡⟨⟩
+      (x ∷ [])                ∎
+\end{code}
+\end{frame}
+
+
+
+\begin{frame}{Equational reasoning + induction}
+\begin{code}
+    add-n-zero : (n : ℕ) → n + zero ≡ n
+    add-n-zero zero     = refl
+    add-n-zero (suc n)  =
+      (suc n) + zero   ≡⟨⟩
+      suc (n + zero)   ≡⟨ cong suc (add-n-zero n) ⟩
+      suc n            ∎
+\end{code}
+Here we have to provide an \alert{explicit proof} that $\suc\ (n~\fun{+}~\zero) = \suc~n$, using the IH.
+
+\textbf{Exercise.} Prove that $\var{xs}~\fun{++}~\con{[]} = \var{xs}$.
+
+\textbf{Exercise.} Prove associativity of \fun{++}.
+\end{frame}
+
+
+\begin{frame}{Example 1: functor laws for $\texttt{List}$}
+The first functor law for lists:
+\begin{code}
+    map-id : {A : Set} (xs : List A) → map id xs ≡ xs
+    map-id []        = refl
+    map-id (x ∷ xs)  =
+      map id (x ∷ xs)   ≡⟨⟩
+      id x ∷ map id xs  ≡⟨⟩
+      x ∷ map id xs     ≡⟨ cong (x ∷_) (map-id xs) ⟩
+      x ∷ xs            ∎
+\end{code}
+\end{frame}
+
+\begin{frame}{Exercise}
+Prove the second functor law for $\List$.
+
+First, we need to define function composition:\footnote{Unicode input for $∘$: \texttt{\textbackslash{}circ}}
+\begin{code}
+    _∘_ : {A B C : Set} →
+      (B → C) → (A → B) → (A → C)
+    f ∘ g = λ x → f (g x)
+\end{code}
+Now we can prove that $\fun{map}\ (f\ \fun{∘}\ g)\ x = (\fun{map}\ f\ \fun{∘}\ \fun{map}\ g)\ x$.
+\end{frame}
+
+\begin{frame}{Example 2: verifying optimizations}
+A faster version of $\fun{reverse}$ in $O(n)$:
+\begin{code}
+    reverse-acc : List A → List A → List A
+    reverse-acc []        ys = ys
+    reverse-acc (x ∷ xs) ys = reverse-acc xs (x ∷ ys)
+
+    reverse' : List A → List A
+    reverse' xs = reverse-acc xs []
+\end{code}
+\end{frame}
+
+\begin{frame}{Equivalence of $\texttt{reverse}$ and $\texttt{reverse'}$} \small
+
+\begin{code}[hide]
+    postulate
+      append-[] : (xs : List A) → xs ++ [] ≡ xs
+      append-assoc : (xs ys zs : List A)
+                    → (xs ++ ys) ++ zs ≡ xs ++ (ys ++ zs)
+\end{code}
+\begin{code}
+    reverse-acc-lemma : (xs ys : List A)
+      → reverse-acc xs ys ≡ reverse xs ++ ys
+    reverse-acc-lemma [] ys = refl
+    reverse-acc-lemma (x ∷ xs) ys =
+      reverse-acc (x ∷ xs) ys         ≡⟨⟩
+      reverse-acc xs (x ∷ ys)
+        ≡⟨ reverse-acc-lemma xs (x ∷ ys) ⟩
+      reverse xs ++ (x ∷ ys)
+        ≡⟨ sym (append-assoc (reverse xs) (x ∷ []) ys) ⟩
+      (reverse xs ++ (x ∷ [])) ++ ys  ≡⟨⟩
+      reverse (x ∷ xs) ++ ys          ∎
+\end{code}
+\textbf{Exercise.} Use this to prove that \fun{reverse} and \fun{reverse'} are equivalent.
+\begin{code}[hide]
+    reverse'-reverse : (xs : List A) → reverse' xs ≡ reverse xs
+    reverse'-reverse xs =
+      reverse' xs         ≡⟨⟩
+      reverse-acc xs []   ≡⟨ reverse-acc-lemma xs [] ⟩
+      reverse xs ++ []    ≡⟨ append-[] (reverse xs) ⟩
+      reverse xs          ∎
+\end{code}
+
+\end{frame}
+
+\begin{comment}
+
+\begin{frame}{Example 3: Verifying a compiler}
+\begin{code}[hide]
+  open ReasoningExamples
+\end{code}
+A simple expression language:\footnote{Known as ``Hutton's Razor''}
+\begin{code}
+  data Expr : Set where
+    valE  : ℕ → Expr
+    addE  : Expr → Expr → Expr
+
+  [2+3]+4 : Expr
+  [2+3]+4 = addE (addE (valE 2) (valE 3)) (valE 4)
+
+  eval : Expr → ℕ
+  eval (valE x)      = x
+  eval (addE e1 e2)  = eval e1 + eval e2
+\end{code}
+\end{frame}
+
+\begin{frame}{Evaluating expressions using a stack}
+\begin{code}
+  data Op : Set where
+    PUSH  : ℕ → Op
+    ADD   : Op
+
+  Stack  = List ℕ
+  Code   = List Op
+
+  -- Example code for (2 + 3) + 4
+  code : Code
+  code = PUSH 2 ∷ PUSH 3 ∷ ADD
+          ∷ PUSH 4 ∷ ADD ∷ []
+\end{code}
+\end{frame}
+
+\begin{frame}{Executing compiled code}
+Given a list of instructions and an initial stack, we can execute the code:
+\begin{code}
+  exec : Code → Stack → Stack
+  exec []             s              = s
+  exec (PUSH x ∷ c)  s              = exec c (x ∷ s)
+  exec (ADD    ∷ c)  (m ∷ n ∷ s)  = exec c (n + m ∷ s)
+  exec (ADD    ∷ c)  _              = []
+\end{code}
+\end{frame}
+
+\begin{frame}{Compiling expressions}
+Our compiler uses an \alert{accumulator} for the already generated code:
+\begin{code}
+  comp' : Expr → Code → Code
+  comp' (valE x)      c  = PUSH x ∷ c
+  comp' (addE e1 e2)  c  =
+    comp' e1 (comp' e2 (ADD ∷ c))
+
+  comp : Expr → Code
+  comp e = comp' e []
+\end{code}
+\end{frame}
+
+\begin{frame}{Proving correctness of \texttt{comp}}
+\begin{code}
+  comp-exec-eval : (e : Expr)
+    → exec (comp e) [] ≡ eval e ∷ []
+  comp-exec-eval e =
+    exec (comp e) []       ≡⟨ comp'-exec-eval e [] [] ⟩
+    exec [] (eval e ∷ [])  ≡⟨⟩
+    eval e ∷ []            ∎
+\end{code}
+\begin{code}[hide]
+    where
+\end{code}
+\end{frame}
+
+\begin{frame}{Proving correctness of \texttt{comp'} (\texttt{valE} case)}
+To prove correctness of \fun{comp'}, we need to generalize the statement to an arbitrary stack:
+\begin{code}
+    comp'-exec-eval : (e : Expr) (s : Stack) (c : Code)
+      → exec (comp' e c) s ≡ exec c (eval e ∷ s)
+    comp'-exec-eval (valE x) s c =
+      exec (comp' (valE x) c) s     ≡⟨⟩
+      exec (PUSH x ∷ c) s           ≡⟨⟩
+      exec c (x ∷ s)                ≡⟨⟩
+      exec c (eval (valE x) ∷ s)    ∎
+\end{code}
+\end{frame}
+
+\begin{frame}{Proving correctness of \texttt{comp'} (\texttt{addE} case)}
+\begin{code}
+    comp'-exec-eval (addE e1 e2) s c =
+      exec (comp' (addE e1 e2) c) s             ≡⟨⟩
+      exec (comp' e1 (comp' e2 (ADD ∷ c))) s
+        ≡⟨ comp'-exec-eval e1 s (comp' e2 (ADD ∷ c)) ⟩
+      exec (comp' e2 (ADD ∷ c)) (eval e1 ∷ s)
+        ≡⟨ comp'-exec-eval e2 (eval e1 ∷ s) (ADD ∷ c) ⟩
+      exec (ADD ∷ c) (eval e2 ∷ eval e1 ∷ s)    ≡⟨⟩
+      exec c (eval e1 + eval e2 ∷ s)            ≡⟨⟩
+      exec c (eval (addE e1 e2) ∷ s)            ∎
+\end{code}
+\end{frame}
+
+\end{comment}
+
+\section{Bisimulation}
+
+
+\begin{code}[hide]
+  module GuardedBisimulation where
+    open Guardedness
+\end{code}
+
+\begin{frame}{Proving an equality between streams}
+Let's prove an equality on streams:
+\begin{code}[hide]
+    module WrongTakeDrop where
+\end{code}
+\begin{code}
+      takeDropS  : (n : ℕ) (s : Stream A)
+                → takeS n s ++S dropS n s ≡ s
+      takeDropS zero s = refl
+      takeDropS (suc n) s = {! cong (s .headS ∷S_) ? !}
+\end{code}
+{Error: \color{red}\underline{s .headS ∷S \_y\_296 != s}}
+\end{frame}
+
+\begin{frame}{Bisimulation of streams}
+Streams are coinductive, but the identity type is \alert{inductive}:
+Agda needs to `see' both sides are equal in a finite number of steps.
+
+We need a \alert{coinductive} relation instead:
+\begin{code}
+    record _~_ {A : Set} (s1 s2 : Stream A) : Set where
+      coinductive
+      field
+        headS  :  s1  .headS  ≡  s2  .headS
+        tailS  :  s1  .tailS  ~  s2  .tailS
+    open _~_ public
+\end{code}
+\end{frame}
+
+\begin{frame}{Proving bisimulation of streams}
+Proving bisimulation is just defining a coinductive value of the right type:
+\begin{code}
+    refl~ : (s : Stream A) → s ~ s
+    refl~ s .headS = refl
+    refl~ s .tailS = refl~ (s .tailS)
+
+    takeDropS  : (n : ℕ) (s : Stream A)
+              → (takeS n s ++S dropS n s) ~ s
+    takeDropS zero     s         = refl~ s
+    takeDropS (suc n)  s .headS  = refl
+    takeDropS (suc n)  s .tailS  = takeDropS n (s .tailS)
+\end{code}
+\end{frame}
+
+\begin{frame}{From streams to colists and back}
+\textbf{Exercise.} Prove that converting a stream to a colist and back results in a stream that is bisimilar to the original one:
+\begin{code}[hide]
+    module FromStreamInv where
+      open FiniteInfinite
+\end{code}
+\begin{code}
+      fromStreamInv : (xs : Stream A)
+        → toStream (fromStream xs) (fromStreamInf xs)
+          ~ xs
+\end{code}
+\begin{code}[hide]
+      fromStreamInv xs .headS = refl
+      fromStreamInv xs .tailS = fromStreamInv (xs .tailS)
+\end{code}
+\end{frame}
+
+
+\section{Cubical bisimulation}
+
+\begin{frame}{Cubical Agda}
+
+Cubical Agda is an extension of Agda with primitives from \alert{cubical type theory},
+a version of homotopy type theory (HoTT).
+
+In particular, it provides the cubical path type,
+a version of \alert{observational equality}.
+
+Cubical Agda also provides other primitives like \fun{glue} and \fun{hcomp},
+which are needed to prove the principle of \alert{univalence}.
+\end{frame}
+
+\begin{frame}{The cubical path type}
+The cubical \alert{interval} type \data{I} is a type with two elements \fun{i0} and \fun{i1}
+that \emph{cannot be distinguished} from inside Agda.
+
+The cubical path type $\data{Path}~A~x~y$ (sometimes also written $x~\Id~y$) is the type of
+functions $f : I → A$ such that $f~\fun{i0} = x$ and $f~\fun{i1} = y$.
+\begin{code}[hide]
+module CubicalIdentity where
+  open import Cubical.Foundations.Prelude using (I; Path; _≡_; i0; i1)
+  open Guardedness
+\end{code}
+\end{frame}
+
+\begin{frame}{Properties of the path type}
+\begin{code}
+  reflP : {x : A} → Path A x x
+  reflP {x = x} i = x
+
+  congP : (f : A → B) → Path A x y → Path B (f x) (f y)
+  congP f p i = f (p i)
+\end{code}
+\fun{symP} and \fun{transP} need additional cubical primitives, let's not worry about it for now.
+
+In fact, we can prove that $\data{Path}~A~x~y$ is \alert{isomorphic} to the inductive identity type!
+\end{frame}
+
+
+\begin{frame}{Functional extensionality}
+\alert{Functional extensionality} states that two functions are equal if they give equal outputs on every input.
+
+For inductive identity, functional extensionality is consistent but \alert{unprovable}.
+
+For the cubical path type, it is trivial:
+\begin{code}
+  funExt  : {f g : A → B}
+          → ((x : A) → Path B (f x) (g x))
+          → Path (A → B) f g
+  funExt h i x = h x i
+\end{code}
+\end{frame}
+
+\begin{frame}{Cubical bisimulation}
+The cubical path type serves as a general bisimulation relation for any coinductive type:
+\begin{code}
+  takeDropS  : (n : ℕ) (s : Stream A)
+    → Path (Stream A) (takeS n s ++S dropS n s) s
+  takeDropS zero     s i         = s
+  takeDropS (suc n)  s i .headS  = s .headS
+  takeDropS (suc n)  s i .tailS  =
+    takeDropS n (s .tailS) i
+\end{code}
+\textbf{Exercise.} Prove that bisimilarity of streams implies path equality.
+\end{frame}
+
+\section*{Conclusion}
+
+\begin{frame}{Next time: coinduction case studies}
+\begin{itemize}
+\item The delay monad
+\item Stream processors
+\item Formal languages
+\item Wander types
+\item Coinductive graphs (?)
+\end{itemize}
+\end{frame}
+
+\end{document}
+
+
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% LaTeX-command: "latex -shell-escape"
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:

@@ -1,0 +1,800 @@
+\input{preamble-base.tex}
+
+\def\lecturetitle{Coinductive Programming and Proving in Agda}
+\newcommand\courseyear{2026}
+\subtitle{Lecture 1: Coinductive programming in Agda}
+\date{21 January 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}[plain,noframenumbering]{Lecture plan}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+\section{Introduction}
+
+
+\begin{frame}{Why dependent types?}
+Dependent types embed formal verification \alert{directly inside your type system}.
+
+\textbf{Advantages of dependent types.}
+\begin{itemize}
+  \item Single syntax for programming and proving
+  \item Editor support for interactive development
+  \item Invariants can be embedded inside programs (= \emph{intrinsic} verification)
+\end{itemize}
+
+Verifying a program should not be more difficult than writing it in the first place!
+\end{frame}
+
+\begin{frame}{The Agda language}
+\begin{center}\includegraphics[width=.5\textwidth]{Agda.jpg}\end{center}
+
+Agda is a \alert{purely functional} programming language similar to Haskell.
+
+Unlike Haskell, it has full support for \alert{dependent types}.
+
+It also supports \alert{interactive programming} with help from the type checker.
+\end{frame}
+
+\begin{frame}{Installing Agda}
+\begin{enumerate}
+\item \textbf{Agda binary.} Download the binary\footnote{\href{https://github.com/agda/agda/releases/tag/v2.8.0}{github.com/agda/agda/releases/tag/v2.8.0}}, then run \texttt{agda -{}-setup}.
+
+\item \textbf{Editor plugin.} Install the VS Code plugin or run \texttt{agda -{}-emacs-mode setup}.
+
+\item \textbf{Standard library.} Download and unpack\footnote{\href{https://github.com/agda/agda-stdlib/archive/v2.3.tar.gz}{github.com/agda/agda-stdlib/archive/v2.3.tar.gz}}, then add it to \texttt{libraries} and \texttt{defaults}.
+\end{enumerate}
+Detailed instructions: \href{https://agda.readthedocs.io/en/v2.8.0/getting-started/installation.html}{agda.readthedocs.io/en/v2.8.0/getting-started}
+\end{frame}
+
+
+\begin{code}[hide]
+{-# OPTIONS --allow-unsolved-metas --guardedness --sized-types --cubical -WnoUnsupportedIndexedMatch #-}
+module _ where
+
+data Either (A B : Set) : Set where
+  left   : A → Either A B
+  right  : B → Either A B
+
+\end{code}
+
+
+\begin{frame}{Basic syntax}
+\textbf{Names} can be any non-reserved sequence of unicode\footnote{Supported editors will replace LaTeX-like syntax (e.g.~\texttt{\textbackslash{}to}) with unicode.} characters, except \texttt{.;\{\}()\@"}.
+
+A \textbf{type declaration} is written as $\var{b}~:~\var{A}$.
+
+\textbf{Function types} are written $A → B$ or $(x : A) → B$. $λ\ x → u$ is an (anonymous) function and $f\ x$ is function application.
+
+An \textbf{infix operator} $\fun{\_+\_}$ is used as $x\ +\ y$. \\ $\fun{x+y}$ is a valid name, so use enough spaces.
+
+\end{frame}
+
+\begin{frame}{Loading an Agda file}
+  You can \alert{load} an Agda file by pressing \texttt{Ctrl+c} followed by \texttt{Ctrl+l}.
+
+  Once the file is loaded (and there are no errors), other commands become available:
+  \begin{description}
+    \item[\texttt{Ctrl+c Ctrl+d}] \hfill Infer type of an expression.
+    \item[\texttt{Ctrl+c Ctrl+n}] \hfill Evaluate an expression.
+  \end{description}
+\end{frame}
+
+\begin{frame}{Holes in programs}
+  A \alert{hole} is an incomplete part of a program.
+  You can create one by writing \texttt{?} or \texttt{\{!!\}} and loading the file.
+
+  New commands for holes:
+  \begin{description}
+    \item[\texttt{Ctrl+c Ctrl+,}] \hfill Get hole information
+    \item[\texttt{Ctrl+c Ctrl+c}] \hfill Case split on a variable
+    \item[\texttt{Ctrl+c Ctrl+space}] \hfill Fill in the hole
+  \end{description}
+\end{frame}
+
+\section{Data types and (co)pattern matching}
+
+\begin{frame}{Declaring new datatypes}
+\begin{code}
+data Bool : Set where
+  true   : Bool
+  false  : Bool
+
+data ℕ : Set where
+  zero  : ℕ
+  suc   : ℕ → ℕ
+{-# BUILTIN NATURAL ℕ #-}
+\end{code}
+$\ty{}$ is the type of (small) types (see later).
+\end{frame}
+
+\begin{frame}{Defining functions by pattern matching}
+\begin{code}
+not : Bool → Bool
+not true   = false
+not false  = true
+
+_+_ : ℕ → ℕ → ℕ
+zero     + y  = y
+(suc x)  + y  = suc (x + y)
+\end{code}
+\textbf{Exercise.} Define \fun{isEven}, \fun{\_*\_}, and \fun{\_≤\_} on \Nat.
+\end{frame}
+
+
+\begin{frame}{Total functional programming}
+  Agda is a \alert{total} language: evaluating a function call always returns a result in
+finite time:
+  \begin{itemize}
+    \item The \textbf{coverage checker} ensures completeness of pattern matches.
+    \item The \textbf{termination checker} ensures termination of recursive definitions.
+  \end{itemize}
+
+  Reasons to care about totality:
+  \begin{itemize}
+    \item It prevents crashes and infinite loops.
+    \item It is needed for \textbf{decidable type checking}.
+    \item It is needed for \textbf{logical soundness}.
+  \end{itemize}
+\end{frame}
+
+
+\begin{code}[hide]
+isEven : ℕ → Bool
+isEven zero           = true
+isEven (suc zero)     = false
+isEven (suc (suc x))  = isEven x
+
+half : ℕ → ℕ
+half zero = zero
+half (suc zero) = zero
+half (suc (suc n)) = suc (half n)
+
+_*_ : ℕ → ℕ → ℕ
+zero    * y = zero
+(suc x) * y = (x * y) + y
+
+_≤_ : ℕ → ℕ → Bool
+zero   ≤ y      = true
+suc x  ≤ zero   = false
+suc x  ≤ suc y  = x ≤ y
+
+infixl 10 _+_
+infixl 20 _*_
+
+myNumber = 1 + 2 * 3 + 4
+-- Parsed as ((1 + (2 * 3)) + 4
+-- With infixr, it would be parsed as
+-- 1 + ((2 * 3) + 4) instead.
+\end{code}
+
+\begin{frame}{Record types and projections}
+\begin{code}
+record Rect : Set where
+  constructor rect -- optional
+  field
+    height : ℕ
+    width  : ℕ
+
+square : ℕ → Rect
+square x = record { height = x ; width = x }
+    -- or: rect x x
+
+area : Rect → ℕ
+area r = Rect.height r + Rect.width r
+\end{code}
+\end{frame}
+
+\begin{frame}{More record syntax}
+You can \alert{open} the record to bring projections into scope:
+\begin{code}
+open Rect
+
+perimeter : Rect → ℕ
+perimeter r = 2 * height r + 2 * width r
+\end{code}
+You can also use projections as \alert{postfix}:
+\begin{code}
+rotate : Rect → Rect
+rotate r = rect (r .width) (r .height)
+\end{code}
+\end{frame}
+
+\begin{frame}{Copattern matching}
+Where data types are defined by how we \alert{construct} an element,
+record types are defined by what we can \alert{observe} of an element.
+
+This duality is exploited by Agda's \alert{copattern} syntax:
+\begin{code}[hide]
+stretch : Rect → Rect
+height  (stretch r)   = 2 * height r
+width   (stretch r)   = half (width r)
+\end{code}
+
+\begin{code}
+squeeze : Rect → Rect
+squeeze r  .height  = half (r .height)
+squeeze r  .width   = 2 * r .width
+\end{code}
+We define $\fun{squeeze}~r$ by its projections.
+\end{frame}
+
+
+
+
+\section{Universes and polymorphism}
+
+\begin{frame}{The type \texttt{Set}}
+In Agda, types such as $\Nat$ and $\Bool \to \Bool$ are themselves
+expressions of type $\ty{}$.
+
+We can pass around and return values of type $\ty{}$ just like values
+of any other type.
+
+\textbf{Example.}
+\begin{code}[hide]
+module ExplicitId where
+\end{code}
+\begin{code}
+  id : (A : Set) → A → A
+  id A x = x
+\end{code}
+A type like $\ty{}$ whose elements are themselves types is called a \alert{universe}.
+\end{frame}
+
+\begin{frame}{Side note: the \texttt{Set} hierarchy}
+$\ty{}$ itself does not have type $\ty{}$: assuming so leads to inconsistency.\footnote{See Girard's paradox and Hurken's paradox.}
+
+Instead, $\ty{} = \ty{0}$ has type $\ty{1}$, which has type $\ty{2}$, which has type\ldots
+
+In fact, you can write \alert{universe-polymorphic} definitions by quantifying over $l : \data{Level}$ and working with universe $\ty{}~l$.
+\end{frame}
+
+\begin{frame}{Polymorphic functions in Agda}
+We can use $\ty{}$ to define polymorphic functions and data types:
+\begin{code}
+data List (A : Set) : Set where
+  []    : List A
+  _∷_  : A → List A → List A
+
+length : {A : Set} → List A → ℕ
+length [] = 0
+length (_ ∷ xs) = suc (length xs)
+\end{code}
+The curly braces mark $A$ as \alert{implicit}.
+
+%\textbf{Note.} This is a first example of a \alert{dependent function}:
+%the type of $\fun{id}$ \emph{depends on} the value of its first argument.
+\textbf{Exercise.} Implement \fun{map} and \fun{\_++\_}.
+\end{frame}
+
+\begin{code}[hide]
+infixr 5 _∷_
+
+
+map : {A B : Set} → (A → B) → List A → List B
+map f []         = []
+map f (x ∷ xs)  = f x ∷ map f xs
+
+_++_ : {A : Set} → List A → List A → List A
+[]        ++  ys  = ys
+(x ∷ xs)  ++  ys  = x ∷ (xs ++ ys)
+
+infixr 15 _++_
+\end{code}
+
+
+\begin{frame}{Variable generalization}
+We can mark declare a variable to be generalized automatically:
+\begin{code}
+variable A B C : Set
+
+id : A → A
+id x = x
+\end{code}
+This is equivalent to writing $\{A : \ty{}\} → \ldots$
+\end{frame}
+
+
+\begin{frame}{Polymorphic record types}
+\begin{code}
+record _×_ (A B : Set) : Set where
+  constructor _,_
+  field
+    proj₁ : A
+    proj₂ : B
+open _×_ public
+
+swap : A × B → B × A
+swap (x , y) = y , x
+\end{code}
+\end{frame}
+
+\begin{frame}{If/then/else as a function}
+We can define if/then/else in Agda as follows:
+\begin{code}
+if_then_else_ : Bool → A → A → A
+if true   then x else y  = x
+if false  then x else y  = y
+\end{code}
+This is an example of a \alert{mixfix operator}.
+
+\textbf{Example usage.}
+\begin{code}
+test : ℕ → ℕ
+test x = if (x ≤ 9000) then 0 else 42
+\end{code}
+\end{frame}
+
+\begin{frame}{The empty type and absurd patterns}
+
+\begin{code}
+data ⊥ : Set where
+
+absurd : ⊥ → A
+absurd ()
+\end{code}
+The \alert{absurd pattern} \texttt{()} indicates that there are no possible constructors.
+\end{frame}
+
+\begin{frame}{The disjoint sum type}
+The \data{Either} type from Haskell is called \data{\_⊎\_}:
+\begin{code}
+data _⊎_ (A B : Set) : Set where
+  inj₁  : A → A ⊎ B
+  inj₂  : B → A ⊎ B
+
+[_,_] : (A → C) → (B → C) → A ⊎ B → C
+[ f , g ] (inj₁ x)  = f x
+[ f , g ] (inj₂ y)  = g y
+\end{code}
+\end{frame}
+
+\section{Dependent types}
+
+\begin{frame}{Dependent types}
+A \alert{dependent type} is a family of types, depending on a term of a \alert{base type}: \small
+\begin{code}
+data Flavour : Set where
+  cheesy chocolatey : Flavour
+
+data Food : Flavour → Set where
+  pizza  : Food cheesy
+  cake   : Food chocolatey
+  bread  : {f : Flavour} → Food f
+
+amountOfCheese : Food cheesy → ℕ
+amountOfCheese pizza  = 100
+amountOfCheese bread  = 20
+\end{code}
+\normalsize
+Agda knows that $\con{cake}$ is not a valid input!
+\end{frame}
+
+
+\begin{frame}{Vectors: lists that know their length}
+$\data{Vec}\ A\ n$ is the type of \alert{vectors} of length $n$:
+\begin{code}[hide]
+variable
+  m n : ℕ
+\end{code}
+\begin{code}
+data Vec (A : Set) : ℕ → Set where
+  []    : Vec A 0
+  _∷_   : A → Vec A n → Vec A (suc n)
+\end{code}
+\begin{code}
+myVec : Vec ℕ 4
+myVec = 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+\end{code}
+Types will be normalized during type checking:
+\begin{code}
+myVec' : Vec ℕ (2 + 2)
+myVec' = myVec
+\end{code}
+\end{frame}
+
+\begin{frame}{Side note: Parameters vs.~indices}
+The argument $(A : Set)$ in the definition of $\data{Vec}$ is a \alert{parameter},
+and has to be \emph{the same in the type of each constructor}.
+
+The argument of type $\Nat$ in the definition of $\data{Vec}$ is an \alert{index},
+and must be \emph{determined individually for each constructor}.
+\end{frame}
+
+
+
+\begin{frame}{Quiz question}
+  \textbf{Question.} How many elements are there in the type $\data{Vec}\ \data{Bool}\ \lit{3}$? \pause
+
+  \textbf{Answer.} 8 elements: \footnotesize
+  \begin{itemize}
+    \item $\true~\con{∷}~\true~\con{∷}~\true~\con{∷}~\con{[]}$
+    \item~$\true~\con{∷}~\true~\con{∷}~\false~\con{∷}~\con{[]}$
+    \item~$\true~\con{∷}~\false~\con{∷}~\true~\con{∷}~\con{[]}$
+    \item~$\true~\con{∷}~\false~\con{∷}~\false~\con{∷}~\con{[]}$
+    \item~$\false~\con{∷}~\true~\con{∷}~\true~\con{∷}~\con{[]}$
+    \item~$\false~\con{∷}~\true~\con{∷}~\false~\con{∷}~\con{[]}$
+    \item~$\false~\con{∷}~\false~\con{∷}~\true~\con{∷}~\con{[]}$
+    \item~$\false~\con{∷}~\false~\con{∷}~\false~\con{∷}~\con{[]}$
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Dependent function types}
+
+A \alert{dependent function type} is a type of the form $(x : A) \to B\ x$
+where the \emph{type} of the output depends on the \emph{value} of the input.
+
+\textbf{Example.}
+\begin{code}
+replicate : (n : ℕ) → A → Vec A n
+replicate zero     x  = []
+replicate (suc n)  x  = x ∷ replicate n x
+\end{code}
+E.g.~$\fun{replicate}\ \lit{3}\ \lit{0}$ has type $\data{Vec}\ \Nat\ \lit{3}$ and evaluates to $\lit{0}\ \cons\ \lit{0}\ \cons\ \lit{0}\ \cons\ \nil$.
+\end{frame}
+
+
+
+\begin{frame}{Dependent pattern matching}
+We can pattern match on $\data{Vec}$ just like on $\data{List}$:
+\begin{code}
+mapV : (A → B) → Vec A n → Vec B n
+mapV f []         = []
+mapV f (x ∷ xs)   = f x ∷ mapV f xs
+
+head : Vec A (suc n) → A
+head (x ∷ xs) = x
+
+tail : Vec A (suc n) → Vec A n
+tail (x ∷ xs) = xs
+\end{code}
+In $\fun{head}$ and $\fun{tail}$, the cases for $\nil$ are impossible!
+\end{frame}
+
+
+\begin{frame}[t]{A safe lookup}
+
+To define a total lookup on vectors, we need the type $\data{Fin}\ n$:
+
+\begin{code}
+data Fin : ℕ → Set where
+  zero  : Fin (suc n)
+  suc   : Fin n → Fin (suc n)
+
+lookupVec : Vec A n → Fin n → A
+lookupVec (x ∷ xs)  zero     =  x
+lookupVec (x ∷ xs)  (suc i)  =  lookupVec xs i
+\end{code}
+
+Again, there is no case for the empty vector!
+\end{frame}
+
+\begin{frame}{The family of \texttt{Fin} types}
+\begin{tikzpicture}[node distance=0.5cm and 0.3cm, auto]
+  \node (fz) {$\Fin\ \lit{0}$};
+  \node (fsz) [right=of fz] {$\Fin\ \lit{1}$};
+  \node (fssz) [right=of fsz] {$\Fin\ \lit{2}$};
+  \node (fsssz) [right=of fssz] {$\Fin\ \lit{3}$};
+  \node (fssssz) [right=of fsssz] {$\Fin\ \lit{4}$};
+  \node (fsssssz) [right=of fssssz] {$\cdots$};
+  \node (z1) [below=of fsz] {$\zero$};
+  \node (z2) [below=of fssz] {$\zero$};
+  \node (z3) [below=of fsssz] {$\zero$};
+  \node (z4) [below=of fssssz] {$\zero$};
+  \node (z5) [below=of fsssssz] {$\cdots$};
+  \node (sz2) [below=of z2] {$\suc$};
+  \node (sz3) [below=of z3] {$\suc$};
+  \node (sz4) [below=of z4] {$\suc$};
+  \node (sz5) [below=of z5] {$\cdots$};
+  \node (ssz3) [below=of sz3] {$\suc$};
+  \node (ssz4) [below=of sz4] {$\suc$};
+  \node (ssz5) [below=of sz5] {$\cdots$};
+  \node (sssz4) [below=of ssz4] {$\suc$};
+  \node (sssz5) [below=of ssz5] {$\cdots$};
+  \draw[->] (sz2) to (z1);
+  \draw[->] (sz3) to (z2);
+  \draw[->] (sz4) to (z3);
+  \draw[->] (ssz3) to (sz2);
+  \draw[->] (ssz4) to (sz3);
+  \draw[->] (sssz4) to (ssz3);
+\end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Some more vector functions}
+\textbf{Exercise.} Implement the following functions:
+\begin{code}
+zipVec : Vec A n → Vec B n → Vec (A × B) n
+updateVecAt : Fin n → A → Vec A n → Vec A n
+\end{code}
+\begin{code}[hide]
+zipVec = {!   !}
+updateVecAt = {!   !}
+\end{code}
+\end{frame}
+
+\section{Coinductive record types}
+
+\begin{frame}{Streams as a coinductive record}
+A stream consists of a \alert{head} and a tail (= another stream):
+\begin{code}[hide]
+module Guardedness where
+\end{code}
+\begin{code}
+  record Stream (A : Set) : Set where
+    coinductive
+    field
+      headS  : A
+      tailS  : Stream A
+  open Stream public
+\end{code}
+The \alert{coinductive} keyword indicates that we want the largest such type.
+\end{frame}
+
+\begin{frame}{Functions on streams}
+We can use the projections to define functions on streams:
+\begin{code}
+  firstTwo : Stream A → A × A
+  firstTwo s = s .headS , s .tailS .headS
+
+  dropS : ℕ → Stream A → Stream A
+  dropS zero     s  = s
+  dropS (suc n)  s  = dropS n (s .tailS)
+\end{code}
+\end{frame}
+
+\begin{code}[hide]
+  takeS : ℕ → Stream A → List A
+  takeS zero s = []
+  takeS (suc n) s = s .headS ∷ takeS n (s .tailS)
+
+  _∷S_ : A → Stream A → Stream A
+  (x ∷S xs) .headS = x
+  (x ∷S xs) .tailS = xs
+
+  _++S_ : List A → Stream A → Stream A
+  [] ++S ys = ys
+  (x ∷ xs) ++S ys = x ∷S (xs ++S ys)
+\end{code}
+
+\begin{frame}{Defining a new stream}
+\begin{code}[hide]
+  module bad where
+    {-# NON_TERMINATING #-}
+\end{code}
+Defining a new stream with a record constructor fails the termination check:
+\begin{code}
+    zeroes : Stream ℕ
+    zeroes = record { headS = 0 ; tailS = zeroes }
+\end{code}
+{\color{red}\underline{Termination checking failed for zeroes}}
+
+Allowing this would violate strong normalization of Agda!
+\end{frame}
+
+\begin{frame}{Defining a new stream}
+To define a new stream, we have to use copatterns instead:
+\begin{code}
+  zeroes : Stream ℕ
+  zeroes .headS  = 0
+  zeroes .tailS  = zeroes
+\end{code}
+\fun{zeroes} only reduces when projections are applied to it,
+thus preserving strong normalization.
+\end{frame}
+
+\begin{frame}{The guardedness criterion}
+Coinductive values should be \alert{productive}:
+applying any (finite) number of projections to them should terminate.
+
+This is enforced by the \alert{guardedness criterion}:
+\footnote{Enabled by \texttt{\{-\# OPTIONS -{}-guardedness \#-\}}}
+every (co)recursive call needs to appear
+\begin{enumerate}
+  \item in a clause with a copattern, \emph{and}
+  \item either at the top level or as the argument to one or more constructors
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Limitations of guardedness}
+\begin{code}
+  mapS : (A → B) → Stream A → Stream B
+  mapS f xs .headS  = f (xs .headS)
+  mapS f xs .tailS  = mapS f (xs .tailS)
+\end{code}
+\begin{code}[hide]
+  module failingnat where
+    {-# NON_TERMINATING #-}
+\end{code}
+\begin{code}
+    nats : Stream ℕ
+    nats .headS = 0
+    nats .tailS = mapS suc nats
+\end{code}
+{\color{red}\underline{Termination checking failed for nats}}
+
+\textbf{Problem.} The guardedness checker does not know anything about \fun{mapS}!
+\end{frame}
+
+\begin{frame}{Working around the limitations}
+\begin{code}
+  natsFrom : ℕ → Stream ℕ
+  natsFrom n .headS = n
+  natsFrom n .tailS = natsFrom (suc n)
+
+  nats : Stream ℕ
+  nats = natsFrom 0
+\end{code}
+Alternatively, we can use \alert{sized types} to provide Agda with more information about \fun{mapS} (see later).
+\end{frame}
+
+\begin{frame}{Exercises}
+\begin{itemize}
+\item Define $\fun{repeat} : A \to \data{Stream}~A$.
+\item Define $\fun{lookup} : \data{Stream}~A \to \Nat \to A$.
+\item Define $\fun{tabulate} : (\Nat \to A) \to \data{Stream}~A$.
+\item Use $\fun{tabulate}$ to define $\fun{fibonacci} : \data{Stream}~\Nat$.
+\item Define $\fun{transpose} : \data{Stream}~(\data{Stream}~A) \to \data{Stream}~(\data{Stream}~A)$.
+\item \textbf{(Bonus)} Prove that $\fun{lookup}~(\fun{lookup}~(\fun{transpose}~\var{xss})~i)~j ≡ \fun{lookup}~(\fun{lookup}~\var{xss}~j)~i$.
+\end{itemize}
+\end{frame}
+
+\section{Mixing induction and coinduction}
+
+\begin{frame}{Colists: potentially infinite lists}
+\begin{code}
+  mutual
+    data Colist (A : Set) : Set where
+      []   : Colist A
+      _∷_  : A → Colist' A → Colist A
+
+    record Colist' (A : Set) : Set where
+      coinductive
+      field
+        force : Colist A
+  open Colist' public
+\end{code}
+\end{frame}
+
+\begin{frame}{Converting a stream to a colist}
+\begin{code}
+  fromStream : Stream A → Colist A
+  fromStream {A} xs = xs .headS ∷ rest
+    where
+      rest : Colist' A
+      rest .force = fromStream (xs .tailS)
+\end{code}
+Alternatively, we use a \alert{copattern lambda}:
+\begin{code}
+  fromStream' : Stream A → Colist A
+  fromStream' {A} xs = xs .headS ∷
+    (λ where .force → fromStream' (xs .tailS))
+\end{code}
+\textbf{Exercise.} Define $\fun{fromList} : \data{List}~A → \data{Colist}~A$.
+\begin{code}[hide]
+  fromList : List A → Colist A
+  fromList [] = []
+  fromList (x ∷ xs) = x ∷ λ where .force → fromList xs
+\end{code}
+\end{frame}
+
+\begin{frame}{Another example: co-natural numbers}
+\begin{code}
+  mutual
+    data Coℕ : Set where
+      zero  : Coℕ
+      suc   : Coℕ' → Coℕ
+
+    record Coℕ' : Set where
+      coinductive
+      field force : Coℕ
+  open Coℕ' public
+\end{code}
+\textbf{Exercise.} Define $\fun{∞} : \data{Coℕ}$, $\fun{fromℕ} : ℕ → \data{Coℕ}$, and $\fun{colength} : \data{Colist}~A → \data{Coℕ}$.
+\end{frame}
+
+
+\section{Sized types}
+
+\begin{frame}{Sized types}
+\alert{Sized types}\footnote{Enabled by \texttt{\{-\# OPTIONS -{}-sized-types \#-\}}} are an alternative to the syntactic guardedness checker that annotates the size of expressions in their types.
+
+The module $\texttt{Size}$ provides:
+\begin{itemize}
+  \item $\data{Size} : \ty{}$
+  \item $\data{Size<} : \data{Size} → \ty{}$
+  \item $\fun{∞} : \data{Size}$.
+\end{itemize}
++ some operators not relevant for coinduction.
+\end{frame}
+
+\begin{frame}{Sized streams}
+\begin{code}[hide]
+module SizedTypes where
+  open import Size
+  variable i : Size
+\end{code}
+We can parametrize a stream by its size $i$\\
+(= the number of elements we can observe):
+\begin{code}
+  record Stream (A : Set) (i : Size) : Set where
+    coinductive
+    field
+      headS  : A
+      tailS  : {j : Size< i} → Stream A j
+  open Stream
+\end{code}
+The tail can be assigned any size $j$ that is strictly smaller than $i$.
+\end{frame}
+
+\begin{frame}{The infinite size}
+When \emph{consuming} a stream we can use size $∞$:
+\begin{code}
+  takeS : ℕ → Stream A ∞ → List A
+  takeS zero s     = []
+  takeS (suc n) s  = s .headS ∷ takeS n (s .tailS)
+\end{code}
+\textbf{Exercise.} Define $\fun{dropS}$.
+\end{frame}
+
+\begin{frame}{Defining sized streams}
+When \emph{defining} a new stream we should define it at an arbitrary size $i$:
+\begin{code}
+  zeroes : Stream ℕ i
+  zeroes .headS  = 0
+  zeroes .tailS  = zeroes
+\end{code}
+More explicitly:
+\begin{code}
+  zeroes' : {i : Size} → Stream ℕ i
+  zeroes' {i} .headS      = 0
+  zeroes' {i} .tailS {j}  = zeroes {j}
+\end{code}
+\end{frame}
+
+\begin{frame}{A size-preserving map}
+We can now give a more precise type to \fun{map}:
+\begin{code}
+  mapS : (A → B) → Stream A i → Stream B i
+  mapS f s .headS  = f (s .headS)
+  mapS f s .tailS  = mapS f (s .tailS)
+\end{code}
+This allows a direct definition of \fun{nats}:
+\begin{code}
+  nats : Stream ℕ i
+  nats .headS  = 0
+  nats .tailS  = mapS suc nats
+\end{code}
+\textbf{Exercise.} Define \fun{zipWithS} and use it to define \fun{fibonacci} without using \fun{tabulate}.
+\end{frame}
+
+\begin{frame}{Next time}
+\begin{itemize}
+  \item The Curry-Howard correspondence
+  \item Equational reasoning
+  \item Bisimulation as a coinductive relation
+  \item Bisimulation as the cubical path type
+\end{itemize}
+\end{frame}
+
+
+
+
+
+\end{document}
+
+
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% LaTeX-command: "latex -shell-escape"
+%%% TeX-command-extra-options: "-shell-escape"
+%%% End:

@@ -1,0 +1,229 @@
+\documentclass[english,14pt,dvipsnames,table,fleqn]{beamer}
+
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{appendixnumberbeamer}
+\usepackage{array}
+\usepackage{babel}
+\usepackage[scaled=0.81]{beramono}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{mathtools}
+\usepackage{minibox}
+\usepackage{minted}  % Syntax highlighting using pygmentize
+\usepackage{multicol}
+\usepackage{pbox}
+\usepackage{tabularx}
+\usepackage{times}
+\usepackage[normalem]{ulem}
+\usepackage{wasysym}
+\usepackage{xparse}
+\usepackage{xspace}
+\usepackage[utf8]{inputenc}
+\usepackage{agda}
+\usepackage{etoolbox}
+
+\usepackage{minted}
+\newminted[Haskell]{haskell}{mathescape,escapeinside=~~}
+\newmintinline[Hs]{haskell}{}
+\definecolor{markinlineColor}{RGB}{204,229,255}
+\newmintinline[Hc]{haskell}{bgcolor=markinlineColor}
+
+
+\newminted[Java]{java}{mathescape,escapeinside=~~}
+
+\newminted[JavaScript]{javascript}{mathescape,escapeinside=~~}
+
+
+\usepackage{color,colortbl,xcolor}
+\usepackage{comment}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,arrows.meta}
+\usetikzlibrary{calc}
+\usetikzlibrary{fit}
+\usetikzlibrary{overlay-beamer-styles}
+\usetikzlibrary{positioning}
+\usetikzlibrary{shapes,shapes.symbols}
+\usetikzlibrary{tikzmark}
+\usetikzlibrary{trees}
+
+\definecolor{mc1}{RGB}{27,158,119}
+\definecolor{mc2}{RGB}{217,95,2}
+\definecolor{mc3}{RGB}{117,112,179}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{dateplot}
+
+\usepackage[absolute,overlay]{textpos}  % place images with absolute position
+  \setlength{\TPHorizModule}{1mm}
+  \setlength{\TPVertModule}{1mm}
+
+% Use metropolis beamer theme
+\usetheme{metropolis}
+\usepackage{FiraSans}  % Really nice font for metro theme
+\setbeamercolor{progress bar}{fg=darkgray}
+
+\setbeamertemplate{itemize item}{$\bullet$}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% Define block styles
+\tikzstyle{decision} = [diamond, draw, fill=blue!20, text width=4.5em,
+  text badly centered, node distance=3cm, inner sep=0pt]
+\tikzstyle{block} = [rectangle, draw, fill=mDarkTeal, font=\footnotesize,
+  text=white, text width=4em, text centered, rounded corners, minimum height=3em]
+\tikzstyle{line} = [draw, -latex']
+\tikzstyle{cloud} = [draw, ellipse,fill=mDarkTeal!20, node distance=2.5cm,
+  font=\footnotesize, minimum height=2em]
+
+% Stuff for the title page
+\title{\lecturetitle}
+\author{Jesper Cockx}
+\institute{Technical University Delft}
+%\titlegraphic{\includegraphics[height=2cm]{TUDelft.png}}
+
+
+% `to' (destination) node in code
+\def\soToNode#1{\node (#1) at ($(pic cs:#1) + (-3pt,0)$) {}}
+% `from' (comment) node
+\DeclareDocumentCommand{\soFromNode}{ m m m }{\node (_#1) [#3 #1] {#2}}
+% arrow connecting `from' and `to'
+\DeclareDocumentCommand{\soArrow}{ m m }{\draw [#2] (_#1) -> (#1)}
+% #1             #2                   #3                 #4                #5
+% tikzmark name, text in description, where description, arrow attributes, arguments to tikzpicture
+\DeclareDocumentCommand{\soComment}{ m m O{below=4mm of} O{black,very thick} O{} }{%
+\begin{tikzpicture}[remember picture, ->, >=stealth, overlay, red, very thick, align=left,#5]
+  \soToNode{#1};
+  \soFromNode{#1}{#2}{#3};
+  \soArrow{#1}{#4};
+\end{tikzpicture}
+}
+
+\tikzset{var/.style={draw,rectangle,blue,very thick,minimum size=30}}
+\tikzset{obj/.style={draw,ellipse,minimum width=30,thick}}
+
+\tikzset{cls/.style={draw,ellipse,minimum width=70,very thick}}
+\tikzset{int/.style={draw,ellipse,minimum width=70,very thick, dotted}}
+
+% http://tex.stackexchange.com/questions/100313/a-problem-with-beamer-tikz-and-fonts
+\let\next\relax  % See URL above for why this is needed with TikZ + Beamer
+
+
+\setbeamertemplate{section in toc}[square]
+
+\makeatletter
+\patchcmd{\beamer@sectionintoc}{\vskip1.5em}{\vskip0.5em}{}{}
+\makeatother
+
+\AtBeginSection[]
+{
+  \begin{frame}<beamer>[plain,noframenumbering]{Outline}
+    \tableofcontents[currentsection,hideallsubsections]
+  \end{frame}
+}
+
+\makeatletter
+\newlength\beamerleftmargin
+\setlength\beamerleftmargin{\Gm@lmargin}
+\makeatother
+
+\renewcommand{\arraycolsep}{3pt}
+
+\newdimen\mathindent
+\mathindent=2ex
+
+
+\usepackage{newunicodechar}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{←}{\ensuremath{\leftarrow}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{λ}{\ensuremath{\lambda}}
+\newunicodechar{∀}{\ensuremath{\forall}}
+\newunicodechar{Π}{\ensuremath{\Pi}}
+\newunicodechar{Σ}{\ensuremath{\Sigma}}
+\newunicodechar{≡}{\ensuremath{\equiv}}
+\newunicodechar{≅}{\ensuremath{\cong}}
+\newunicodechar{≐}{\ensuremath{\doteq}}
+\newunicodechar{∈}{\ensuremath{\in}}
+\newunicodechar{∧}{\ensuremath{\land}}
+\newunicodechar{∨}{\ensuremath{\lor}}
+\newunicodechar{⊤}{\ensuremath{\top}}
+\newunicodechar{⊥}{\ensuremath{\bot}}
+\newunicodechar{⊔}{\ensuremath{\sqcup}}
+\newunicodechar{∷}{\ensuremath{{::}}}
+\newunicodechar{ℓ}{\ensuremath{\ell}}
+\newunicodechar{₀}{\ensuremath{{_0}}}
+\newunicodechar{₁}{\ensuremath{{_1}}}
+\newunicodechar{₂}{\ensuremath{{_2}}}
+\newunicodechar{₃}{\ensuremath{{_3}}}
+\newunicodechar{₄}{\ensuremath{{_4}}}
+\newunicodechar{₅}{\ensuremath{{_5}}}
+\newunicodechar{₆}{\ensuremath{{_6}}}
+\newunicodechar{₇}{\ensuremath{{_7}}}
+\newunicodechar{₈}{\ensuremath{{_8}}}
+\newunicodechar{₉}{\ensuremath{{_9}}}
+\newunicodechar{⟨}{\ensuremath{{\langle}}}
+\newunicodechar{⟩}{\ensuremath{{\rangle}}}
+\newunicodechar{̧}{\c}
+\newunicodechar{∘}{\ensuremath{\circ}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{⋯}{\ensuremath{\cdots}}
+\newunicodechar{ℕ}{\ensuremath{\mathbb{N}}}
+\newunicodechar{∎}{\ensuremath{\blacksquare}}
+\newunicodechar{∞}{\ensuremath{\infty}}
+\newunicodechar{⊎}{\ensuremath{\uplus}}
+\newunicodechar{¬}{\ensuremath{\lnot}}
+\newunicodechar{⇓}{\ensuremath{\Downarrow}}
+\newunicodechar{≟}{\ensuremath{\stackrel{?}{=}}}
+\newunicodechar{ν}{\ensuremath{\nu}}
+\newunicodechar{δ}{\ensuremath{\delta}}
+\newunicodechar{∅}{\ensuremath{\emptyset}}
+\newunicodechar{ε}{\ensuremath{\varepsilon}}
+\newunicodechar{∋}{\ensuremath{\ni}}
+\newunicodechar{∩}{\ensuremath{\cap}}
+\newunicodechar{∪}{\ensuremath{\cup}}
+\newunicodechar{·}{\ensuremath{\cdot}}
+
+\newcommand\var[1]{\mathit{#1}}
+\newcommand\prim[1]{{\AgdaPrimitive{#1}}}
+\newcommand\ty[1]{{{\prim{Set}}_{#1}}}
+\newcommand\fun[1]{{\AgdaFunction{#1}}}
+\newcommand\data[1]{{\AgdaFunction{#1}}}
+\newcommand\con[1]{{\AgdaInductiveConstructor{#1}}}
+\newcommand\field[1]{{\AgdaField{#1}}}
+\newcommand\keyw[1]{{\AgdaKeyword{#1}}}
+\newcommand\lit[1]{{\AgdaNumber{#1}}}
+\newcommand\level{\fun{Level}}
+\newcommand\ite[3]{\fun{if}\  #1\  \fun{then}\  #2\  \fun{else}\  #3}
+
+
+\newcommand\Nat{\data{ℕ}}
+\newcommand\zero{\con{zero}}
+\newcommand\suc{\con{suc}}
+\newcommand\Bool{\data{Bool}}
+\newcommand\true{\con{true}}
+\newcommand\false{\con{false}}
+\newcommand\List{\data{List}}
+\renewcommand\Vec{\data{Vec}}
+\newcommand\nil{\con{[]}}
+\newcommand\cons{\con{::}}
+\newcommand\Fin{\data{Fin}}
+\renewcommand\prod{\data{×}}
+\newcommand\sigmatype{\data{Σ}}
+\newcommand\toptype{\data{⊤}}
+\newcommand\bottomtype{\data{⊥}}
+\newcommand\Id{\data{≡}}
+\newcommand\refl{\con{refl}}
+
+\newcommand\prf[1]{\colorbox{gray!30}{#1}}
+\newcommand{\ru}[2]{\dfrac{\begin{array}{@{}c@{}}#1\end{array}}{\begin{array}{@{}c@{}}#2\end{array}}}
+
+
+
+%%% Local Variables:
+%%% mode: latex -shell-escape
+%%% TeX-master: t
+%%% End:
