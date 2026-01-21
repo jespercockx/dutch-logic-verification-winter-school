@@ -51,35 +51,35 @@ module Coinduction where
   record Stream (A : Set) : Set where
     coinductive
     field
-      headS  : A
-      tailS  : Stream A
+      head  : A
+      tail  : Stream A
   open Stream public
 
   variable s s1 s2 : Stream A
 
-  takeS : ℕ → Stream A → List A
-  takeS zero s = []
-  takeS (suc n) s = s .headS ∷ takeS n (s .tailS)
+  take : ℕ → Stream A → List A
+  take zero s = []
+  take (suc n) s = s .head ∷ take n (s .tail)
 
-  dropS : ℕ → Stream A → Stream A
-  dropS zero     s  = s
-  dropS (suc n)  s  = dropS n (s .tailS)
+  drop : ℕ → Stream A → Stream A
+  drop zero     s  = s
+  drop (suc n)  s  = drop n (s .tail)
 
-  mapS : (A → B) → Stream A → Stream B
-  mapS f xs .headS = f (xs .headS)
-  mapS f xs .tailS = mapS f (xs .tailS)
+  map : (A → B) → Stream A → Stream B
+  map f xs .head = f (xs .head)
+  map f xs .tail = map f (xs .tail)
 
   _∷S_ : A → Stream A → Stream A
-  (x ∷S xs) .headS = x
-  (x ∷S xs) .tailS = xs
+  (x ∷S xs) .head = x
+  (x ∷S xs) .tail = xs
 
-  _++S_ : List A → Stream A → Stream A
-  [] ++S ys = ys
-  (x ∷ xs) ++S ys = x ∷S (xs ++S ys)
+  _++_ : List A → Stream A → Stream A
+  [] ++ ys = ys
+  (x ∷ xs) ++ ys = x ∷S (xs ++ ys)
 
   natsFrom : ℕ → Stream ℕ
-  natsFrom n .headS = n
-  natsFrom n .tailS = natsFrom (suc n)
+  natsFrom n .head = n
+  natsFrom n .tail = natsFrom (suc n)
 
   nats : Stream ℕ
   nats = natsFrom 0
@@ -116,7 +116,7 @@ module Coinduction where
   open Colist' public
 
   fromStream : Stream A → Colist A
-  fromStream {A} xs = xs .headS ∷ (λ where .force → fromStream (xs .tailS))
+  fromStream {A} xs = xs .head ∷ (λ where .force → fromStream (xs .tail))
 
   fromList : List A → Colist A
   fromList xs = {!   !}
@@ -149,31 +149,31 @@ module SizedTypes where
   record Stream (A : Set) (i : Size) : Set where
     coinductive
     field
-      headS  : A
-      tailS  : {j : Size< i} → Stream A j
+      head  : A
+      tail  : {j : Size< i} → Stream A j
   open Stream
 
-  takeS : ℕ → Stream A ∞ → List A
-  takeS zero s     = []
-  takeS (suc n) s  = s .headS ∷ takeS n (s .tailS)
+  take : ℕ → Stream A ∞ → List A
+  take zero s     = []
+  take (suc n) s  = s .head ∷ take n (s .tail)
 
-  dropS : ℕ → Stream A ∞ → Stream A ∞
-  dropS n s = {!   !}
+  drop : ℕ → Stream A ∞ → Stream A ∞
+  drop n s = {!   !}
 
   zeroes : Stream ℕ i
-  zeroes .headS  = 0
-  zeroes .tailS  = zeroes
+  zeroes .head  = 0
+  zeroes .tail  = zeroes
 
-  mapS : (A → B) → Stream A i → Stream B i
-  mapS f xs .headS = f (xs .headS)
-  mapS f xs .tailS = mapS f (xs .tailS)
+  map : (A → B) → Stream A i → Stream B i
+  map f xs .head = f (xs .head)
+  map f xs .tail = map f (xs .tail)
 
   nats : Stream ℕ i
-  nats .headS = 0
-  nats .tailS = mapS suc nats
+  nats .head = 0
+  nats .tail = map suc nats
 
-  zipWithS : (A → B → C) → Stream A i → Stream B i → Stream C i
-  zipWithS f xs ys = {!   !}
+  zipWith : (A → B → C) → Stream A i → Stream B i → Stream C i
+  zipWith f xs ys = {!   !}
 
   fibonacci : Stream ℕ i
   fibonacci = {!   !}

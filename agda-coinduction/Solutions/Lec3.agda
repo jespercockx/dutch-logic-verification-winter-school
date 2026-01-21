@@ -111,9 +111,9 @@ module StreamProcessors where
 
 
   run : SP A B → Stream A → Stream B
-  run (get f) xs = run (f (xs .headS)) (xs .tailS)
-  run (put y sp)  xs .headS  = y
-  run (put y sp)  xs .tailS  = run (sp .force) xs
+  run (get f) xs = run (f (xs .head)) (xs .tail)
+  run (put y sp)  xs .head  = y
+  run (put y sp)  xs .tail  = run (sp .force) xs
 
 
   mutual
@@ -125,7 +125,7 @@ module StreamProcessors where
     sumN (suc n) a = get λ k → sumN n (a + k)
 
   sums-test : List ℕ
-  sums-test = takeS 10 (run sums nats)
+  sums-test = take 10 (run sums nats)
 
   -- C-c C-n StreamProcessors.sums-test
 
@@ -137,10 +137,10 @@ module StreamProcessors where
   compose-correct :
     (p1 : SP A B) (p2 : SP B C) (s : Stream A) →
     run (compose p1 p2) s ~ run p2 (run p1 s)
-  compose-correct (get f) p2 s = compose-correct (f (s .headS)) p2 (s .tailS)
+  compose-correct (get f) p2 s = compose-correct (f (s .head)) p2 (s .tail)
   compose-correct (put y f) (get g) s = compose-correct (f .force) (g y) s
-  compose-correct (put y f) (put z g) s .headS = refl
-  compose-correct (put y f) (put z g) s .tailS = compose-correct (put y f) (g .force) s
+  compose-correct (put y f) (put z g) s .head = refl
+  compose-correct (put y f) (put z g) s .tail = compose-correct (put y f) (g .force) s
 
 
 

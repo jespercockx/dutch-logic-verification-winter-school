@@ -54,11 +54,6 @@ Detailed instructions: \href{https://agda.readthedocs.io/en/v2.8.0/getting-start
 \begin{code}[hide]
 {-# OPTIONS --allow-unsolved-metas --guardedness --sized-types --cubical -WnoUnsupportedIndexedMatch #-}
 module _ where
-
-data Either (A B : Set) : Set where
-  left   : A → Either A B
-  right  : B → Either A B
-
 \end{code}
 
 
@@ -255,14 +250,18 @@ In fact, you can write \alert{universe-polymorphic} definitions by quantifying o
 
 \begin{frame}{Polymorphic functions in Agda}
 We can use $\ty{}$ to define polymorphic functions and data types:
+\begin{code}[hide]
+module Lists where
+  infixr 5 _∷_
+\end{code}
 \begin{code}
-data List (A : Set) : Set where
-  []    : List A
-  _∷_  : A → List A → List A
+  data List (A : Set) : Set where
+    []    : List A
+    _∷_  : A → List A → List A
 
-length : {A : Set} → List A → ℕ
-length [] = 0
-length (_ ∷ xs) = suc (length xs)
+  length : {A : Set} → List A → ℕ
+  length [] = 0
+  length (_ ∷ xs) = suc (length xs)
 \end{code}
 The curly braces mark $A$ as \alert{implicit}.
 
@@ -272,18 +271,15 @@ The curly braces mark $A$ as \alert{implicit}.
 \end{frame}
 
 \begin{code}[hide]
-infixr 5 _∷_
+  map : {A B : Set} → (A → B) → List A → List B
+  map f []         = []
+  map f (x ∷ xs)  = f x ∷ map f xs
 
+  _++_ : {A : Set} → List A → List A → List A
+  []        ++  ys  = ys
+  (x ∷ xs)  ++  ys  = x ∷ (xs ++ ys)
 
-map : {A B : Set} → (A → B) → List A → List B
-map f []         = []
-map f (x ∷ xs)  = f x ∷ map f xs
-
-_++_ : {A : Set} → List A → List A → List A
-[]        ++  ys  = ys
-(x ∷ xs)  ++  ys  = x ∷ (xs ++ ys)
-
-infixr 15 _++_
+  infixr 15 _++_
 \end{code}
 
 
@@ -380,20 +376,23 @@ $\data{Vec}\ A\ n$ is the type of \alert{vectors} of length $n$:
 \begin{code}[hide]
 variable
   m n : ℕ
+
+module Vectors where
+  infixr 5 _∷_
 \end{code}
 \begin{code}
-data Vec (A : Set) : ℕ → Set where
-  []    : Vec A 0
-  _∷_   : A → Vec A n → Vec A (suc n)
+  data Vec (A : Set) : ℕ → Set where
+    []    : Vec A 0
+    _∷_   : A → Vec A n → Vec A (suc n)
 \end{code}
 \begin{code}
-myVec : Vec ℕ 4
-myVec = 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
+  myVec : Vec ℕ 4
+  myVec = 1 ∷ 2 ∷ 3 ∷ 4 ∷ []
 \end{code}
 Types will be normalized during type checking:
 \begin{code}
-myVec' : Vec ℕ (2 + 2)
-myVec' = myVec
+  myVec' : Vec ℕ (2 + 2)
+  myVec' = myVec
 \end{code}
 \end{frame}
 
@@ -431,9 +430,9 @@ where the \emph{type} of the output depends on the \emph{value} of the input.
 
 \textbf{Example.}
 \begin{code}
-replicate : (n : ℕ) → A → Vec A n
-replicate zero     x  = []
-replicate (suc n)  x  = x ∷ replicate n x
+  replicate : (n : ℕ) → A → Vec A n
+  replicate zero     x  = []
+  replicate (suc n)  x  = x ∷ replicate n x
 \end{code}
 E.g.~$\fun{replicate}\ \lit{3}\ \lit{0}$ has type $\data{Vec}\ \Nat\ \lit{3}$ and evaluates to $\lit{0}\ \cons\ \lit{0}\ \cons\ \lit{0}\ \cons\ \nil$.
 \end{frame}
@@ -443,15 +442,15 @@ E.g.~$\fun{replicate}\ \lit{3}\ \lit{0}$ has type $\data{Vec}\ \Nat\ \lit{3}$ an
 \begin{frame}{Dependent pattern matching}
 We can pattern match on $\data{Vec}$ just like on $\data{List}$:
 \begin{code}
-mapV : (A → B) → Vec A n → Vec B n
-mapV f []         = []
-mapV f (x ∷ xs)   = f x ∷ mapV f xs
+  map : (A → B) → Vec A n → Vec B n
+  map f []         = []
+  map f (x ∷ xs)   = f x ∷ map f xs
 
-head : Vec A (suc n) → A
-head (x ∷ xs) = x
+  head : Vec A (suc n) → A
+  head (x ∷ xs) = x
 
-tail : Vec A (suc n) → Vec A n
-tail (x ∷ xs) = xs
+  tail : Vec A (suc n) → Vec A n
+  tail (x ∷ xs) = xs
 \end{code}
 In $\fun{head}$ and $\fun{tail}$, the cases for $\nil$ are impossible!
 \end{frame}
@@ -462,13 +461,13 @@ In $\fun{head}$ and $\fun{tail}$, the cases for $\nil$ are impossible!
 To define a total lookup on vectors, we need the type $\data{Fin}\ n$:
 
 \begin{code}
-data Fin : ℕ → Set where
-  zero  : Fin (suc n)
-  suc   : Fin n → Fin (suc n)
+  data Fin : ℕ → Set where
+    zero  : Fin (suc n)
+    suc   : Fin n → Fin (suc n)
 
-lookupVec : Vec A n → Fin n → A
-lookupVec (x ∷ xs)  zero     =  x
-lookupVec (x ∷ xs)  (suc i)  =  lookupVec xs i
+  lookupVec : Vec A n → Fin n → A
+  lookupVec (x ∷ xs)  zero     =  x
+  lookupVec (x ∷ xs)  (suc i)  =  lookupVec xs i
 \end{code}
 
 Again, there is no case for the empty vector!
@@ -508,12 +507,12 @@ Again, there is no case for the empty vector!
 \begin{frame}{Some more vector functions}
 \textbf{Exercise.} Implement the following functions:
 \begin{code}
-zipVec : Vec A n → Vec B n → Vec (A × B) n
-updateVecAt : Fin n → A → Vec A n → Vec A n
+  zipVec : Vec A n → Vec B n → Vec (A × B) n
+  updateVecAt : Fin n → A → Vec A n → Vec A n
 \end{code}
 \begin{code}[hide]
-zipVec = {!   !}
-updateVecAt = {!   !}
+  zipVec = {!   !}
+  updateVecAt = {!   !}
 \end{code}
 \end{frame}
 
@@ -523,13 +522,14 @@ updateVecAt = {!   !}
 A stream consists of a \alert{head} and a tail (= another stream):
 \begin{code}[hide]
 module Guardedness where
+  open Lists using (List; []; _∷_)
 \end{code}
 \begin{code}
   record Stream (A : Set) : Set where
     coinductive
     field
-      headS  : A
-      tailS  : Stream A
+      head  : A
+      tail  : Stream A
   open Stream public
 \end{code}
 The \alert{coinductive} keyword indicates that we want the largest such type.
@@ -539,26 +539,26 @@ The \alert{coinductive} keyword indicates that we want the largest such type.
 We can use the projections to define functions on streams:
 \begin{code}
   firstTwo : Stream A → A × A
-  firstTwo s = s .headS , s .tailS .headS
+  firstTwo s = s .head , s .tail .head
 
-  dropS : ℕ → Stream A → Stream A
-  dropS zero     s  = s
-  dropS (suc n)  s  = dropS n (s .tailS)
+  drop : ℕ → Stream A → Stream A
+  drop zero     s  = s
+  drop (suc n)  s  = drop n (s .tail)
 \end{code}
 \end{frame}
 
 \begin{code}[hide]
-  takeS : ℕ → Stream A → List A
-  takeS zero s = []
-  takeS (suc n) s = s .headS ∷ takeS n (s .tailS)
+  take : ℕ → Stream A → List A
+  take zero s = []
+  take (suc n) s = s .head ∷ take n (s .tail)
 
   _∷S_ : A → Stream A → Stream A
-  (x ∷S xs) .headS = x
-  (x ∷S xs) .tailS = xs
+  (x ∷S xs) .head = x
+  (x ∷S xs) .tail = xs
 
-  _++S_ : List A → Stream A → Stream A
-  [] ++S ys = ys
-  (x ∷ xs) ++S ys = x ∷S (xs ++S ys)
+  _++_ : List A → Stream A → Stream A
+  [] ++ ys = ys
+  (x ∷ xs) ++ ys = x ∷S (xs ++ ys)
 \end{code}
 
 \begin{frame}{Defining a new stream}
@@ -569,7 +569,7 @@ We can use the projections to define functions on streams:
 Defining a new stream with a record constructor fails the termination check:
 \begin{code}
     zeroes : Stream ℕ
-    zeroes = record { headS = 0 ; tailS = zeroes }
+    zeroes = record { head = 0 ; tail = zeroes }
 \end{code}
 {\color{red}\underline{Termination checking failed for zeroes}}
 
@@ -580,8 +580,8 @@ Allowing this would violate strong normalization of Agda!
 To define a new stream, we have to use copatterns instead:
 \begin{code}
   zeroes : Stream ℕ
-  zeroes .headS  = 0
-  zeroes .tailS  = zeroes
+  zeroes .head  = 0
+  zeroes .tail  = zeroes
 \end{code}
 \fun{zeroes} only reduces when projections are applied to it,
 thus preserving strong normalization.
@@ -592,7 +592,7 @@ Coinductive values should be \alert{productive}:
 applying any (finite) number of projections to them should terminate.
 
 This is enforced by the \alert{guardedness criterion}:
-\footnote{Enabled by \texttt{\{-\# OPTIONS -{}-guardedness \#-\}}}
+\footnote{Enabled by \texttt{\{-\# OPTION -{}-guardedness \#-\}}}
 every (co)recursive call needs to appear
 \begin{enumerate}
   \item in a clause with a copattern, \emph{and}
@@ -602,9 +602,9 @@ every (co)recursive call needs to appear
 
 \begin{frame}{Limitations of guardedness}
 \begin{code}
-  mapS : (A → B) → Stream A → Stream B
-  mapS f xs .headS  = f (xs .headS)
-  mapS f xs .tailS  = mapS f (xs .tailS)
+  map : (A → B) → Stream A → Stream B
+  map f xs .head  = f (xs .head)
+  map f xs .tail  = map f (xs .tail)
 \end{code}
 \begin{code}[hide]
   module failingnat where
@@ -612,8 +612,8 @@ every (co)recursive call needs to appear
 \end{code}
 \begin{code}
     nats : Stream ℕ
-    nats .headS = 0
-    nats .tailS = mapS suc nats
+    nats .head = 0
+    nats .tail = map suc nats
 \end{code}
 {\color{red}\underline{Termination checking failed for nats}}
 
@@ -623,8 +623,8 @@ every (co)recursive call needs to appear
 \begin{frame}{Working around the limitations}
 \begin{code}
   natsFrom : ℕ → Stream ℕ
-  natsFrom n .headS = n
-  natsFrom n .tailS = natsFrom (suc n)
+  natsFrom n .head = n
+  natsFrom n .tail = natsFrom (suc n)
 
   nats : Stream ℕ
   nats = natsFrom 0
@@ -646,6 +646,9 @@ Alternatively, we can use \alert{sized types} to provide Agda with more informat
 \section{Mixing induction and coinduction}
 
 \begin{frame}{Colists: potentially infinite lists}
+\begin{code}[hide]
+  infixr 5 _∷_
+\end{code}
 \begin{code}
   mutual
     data Colist (A : Set) : Set where
@@ -663,16 +666,16 @@ Alternatively, we can use \alert{sized types} to provide Agda with more informat
 \begin{frame}{Converting a stream to a colist}
 \begin{code}
   fromStream : Stream A → Colist A
-  fromStream {A} xs = xs .headS ∷ rest
+  fromStream {A} xs = xs .head ∷ rest
     where
       rest : Colist' A
-      rest .force = fromStream (xs .tailS)
+      rest .force = fromStream (xs .tail)
 \end{code}
 Alternatively, we use a \alert{copattern lambda}:
 \begin{code}
   fromStream' : Stream A → Colist A
-  fromStream' {A} xs = xs .headS ∷
-    (λ where .force → fromStream' (xs .tailS))
+  fromStream' {A} xs = xs .head ∷
+    (λ where .force → fromStream' (xs .tail))
 \end{code}
 \textbf{Exercise.} Define $\fun{fromList} : \data{List}~A → \data{Colist}~A$.
 \begin{code}[hide]
@@ -701,7 +704,7 @@ Alternatively, we use a \alert{copattern lambda}:
 \section{Sized types}
 
 \begin{frame}{Sized types}
-\alert{Sized types}\footnote{Enabled by \texttt{\{-\# OPTIONS -{}-sized-types \#-\}}} are an alternative to the syntactic guardedness checker that annotates the size of expressions in their types.
+\alert{Sized types}\footnote{Enabled by \texttt{\{-\# OPTION -{}-sized-types \#-\}}} are an alternative to the syntactic guardedness checker that annotates the size of expressions in their types.
 
 The module $\texttt{Size}$ provides:
 \begin{itemize}
@@ -715,6 +718,7 @@ The module $\texttt{Size}$ provides:
 \begin{frame}{Sized streams}
 \begin{code}[hide]
 module SizedTypes where
+  open Lists using (List; []; _∷_)
   open import Size
   variable i : Size
 \end{code}
@@ -724,8 +728,8 @@ We can parametrize a stream by its size $i$\\
   record Stream (A : Set) (i : Size) : Set where
     coinductive
     field
-      headS  : A
-      tailS  : {j : Size< i} → Stream A j
+      head  : A
+      tail  : {j : Size< i} → Stream A j
   open Stream
 \end{code}
 The tail can be assigned any size $j$ that is strictly smaller than $i$.
@@ -734,9 +738,9 @@ The tail can be assigned any size $j$ that is strictly smaller than $i$.
 \begin{frame}{The infinite size}
 When \emph{consuming} a stream we can use size $∞$:
 \begin{code}
-  takeS : ℕ → Stream A ∞ → List A
-  takeS zero s     = []
-  takeS (suc n) s  = s .headS ∷ takeS n (s .tailS)
+  take : ℕ → Stream A ∞ → List A
+  take zero s     = []
+  take (suc n) s  = s .head ∷ take n (s .tail)
 \end{code}
 \textbf{Exercise.} Define $\fun{dropS}$.
 \end{frame}
@@ -745,29 +749,29 @@ When \emph{consuming} a stream we can use size $∞$:
 When \emph{defining} a new stream we should define it at an arbitrary size $i$:
 \begin{code}
   zeroes : Stream ℕ i
-  zeroes .headS  = 0
-  zeroes .tailS  = zeroes
+  zeroes .head  = 0
+  zeroes .tail  = zeroes
 \end{code}
 More explicitly:
 \begin{code}
   zeroes' : {i : Size} → Stream ℕ i
-  zeroes' {i} .headS      = 0
-  zeroes' {i} .tailS {j}  = zeroes {j}
+  zeroes' {i} .head      = 0
+  zeroes' {i} .tail {j}  = zeroes {j}
 \end{code}
 \end{frame}
 
 \begin{frame}{A size-preserving map}
 We can now give a more precise type to \fun{map}:
 \begin{code}
-  mapS : (A → B) → Stream A i → Stream B i
-  mapS f s .headS  = f (s .headS)
-  mapS f s .tailS  = mapS f (s .tailS)
+  map : (A → B) → Stream A i → Stream B i
+  map f s .head  = f (s .head)
+  map f s .tail  = map f (s .tail)
 \end{code}
 This allows a direct definition of \fun{nats}:
 \begin{code}
   nats : Stream ℕ i
-  nats .headS  = 0
-  nats .tailS  = mapS suc nats
+  nats .head  = 0
+  nats .tail  = map suc nats
 \end{code}
 \textbf{Exercise.} Define \fun{zipWithS} and use it to define \fun{fibonacci} without using \fun{tabulate}.
 \end{frame}

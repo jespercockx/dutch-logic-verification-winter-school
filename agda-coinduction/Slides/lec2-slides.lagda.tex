@@ -28,7 +28,7 @@ We can interpret logical propositions as the \alert{types} of all their possible
 \begin{tabular}{r>{\columncolor{gray!30}}cl}
 \textbf{Propositional logic} & & \textbf{Type system} \\
 conjunction & $P\ \prod\ Q$ & pair type \\
-disjunction & $\data{Either}\ P\ Q$ & either type \\
+disjunction & $P\ ⊎\ Q$ & either type \\
 implication & $P \rightarrow Q$ & function type \\
 truth & $\toptype$ & unit type \\
 falsity & $\bottomtype$ & empty type \\
@@ -45,9 +45,9 @@ modusPonens f x = f x
 
 \begin{code}[hide]
 cases : {P Q R : Set}
-      → Either P Q → (P → R) → (Q → R) → R
-cases (left x)   f g = f x
-cases (right y)  f g = g y
+      → P ⊎ Q → (P → R) → (Q → R) → R
+cases (inj₁ x)  f g = f x
+cases (inj₂ y)  f g = g y
 \end{code}
 
 \begin{code}[hide]
@@ -124,6 +124,7 @@ double-even (suc m)  = e-suc2 (double-even m)
 \data{Finite} is an \alert{inductive} predicate on a (mixed) coinductive type:
 \begin{code}[hide]
 module FiniteInfinite where
+  open Lists using (List; []; _∷_)
   open Guardedness
   variable x xs : A
 \end{code}
@@ -163,7 +164,7 @@ We can convert a finite colist back to a list:
 \textbf{Exercise.} Prove that \fun{fromStream} always produces an infinite colist.
 \begin{code}[hide]
   fromStreamInf : (xs : Stream A) → Infinite (fromStream xs)
-  fromStreamInf xs = -∷ λ where .force → fromStreamInf (xs .tailS)
+  fromStreamInf xs = -∷ λ where .force → fromStreamInf (xs .tail)
 \end{code}
 \end{frame}
 
@@ -174,8 +175,8 @@ We can convert a finite colist back to a list:
     (xs : Colist A) → Infinite xs → Stream A
 \end{code}
 \begin{code}[hide]
-  toStream (x ∷ xs) (-∷ inf) .headS = x
-  toStream (x ∷ xs) (-∷ inf) .tailS = toStream (xs .force) (inf .force)
+  toStream (x ∷ xs) (-∷ inf) .head = x
+  toStream (x ∷ xs) (-∷ inf) .tail = toStream (xs .force) (inf .force)
 \end{code}
 \textbf{Question.} What should the function do in the case of an empty colist?
 
@@ -208,6 +209,8 @@ The \alert{identity type} $x~\Id~y$ says $x$ and $y$ are equal:
 \begin{code}[hide]
 variable x y z : A
 module InductiveIdentity where
+  open Lists using (List; []; _∷_; length; map)
+  open Vectors using (Vec)
 \end{code}
 \begin{code}
   data _≡_ {A : Set} : A → A → Set where
@@ -325,6 +328,7 @@ We can write more readable identity proofs by using \alert{equational reasoning 
 
 \begin{code}[hide]
   module ReasoningExamples where
+    open Lists using (List; []; _∷_; _++_)
 \end{code}
 
 \begin{frame}{Equational reasoning example}
@@ -549,12 +553,12 @@ Let's prove an equality on streams:
     module WrongTakeDrop where
 \end{code}
 \begin{code}
-      takeDropS  : (n : ℕ) (s : Stream A)
-                → takeS n s ++S dropS n s ≡ s
-      takeDropS zero s = refl
-      takeDropS (suc n) s = {! cong (s .headS ∷S_) ? !}
+      takeDrop  : (n : ℕ) (s : Stream A)
+                → take n s ++ drop n s ≡ s
+      takeDrop zero s = refl
+      takeDrop (suc n) s = {! cong (s .head ∷S_) ? !}
 \end{code}
-{Error: \color{red}\underline{s .headS ∷S \_y\_296 != s}}
+{Error: \color{red}\underline{s .head ∷S \_y\_296 != s}}
 \end{frame}
 
 \begin{frame}{Bisimulation of streams}
@@ -566,8 +570,8 @@ We need a \alert{coinductive} relation instead:
     record _~_ {A : Set} (s1 s2 : Stream A) : Set where
       coinductive
       field
-        headS  :  s1  .headS  ≡  s2  .headS
-        tailS  :  s1  .tailS  ~  s2  .tailS
+        head  :  s1  .head  ≡  s2  .head
+        tail  :  s1  .tail  ~  s2  .tail
     open _~_ public
 \end{code}
 \end{frame}
@@ -576,14 +580,14 @@ We need a \alert{coinductive} relation instead:
 Proving bisimulation is just defining a coinductive value of the right type:
 \begin{code}
     refl~ : (s : Stream A) → s ~ s
-    refl~ s .headS = refl
-    refl~ s .tailS = refl~ (s .tailS)
+    refl~ s .head = refl
+    refl~ s .tail = refl~ (s .tail)
 
-    takeDropS  : (n : ℕ) (s : Stream A)
-              → (takeS n s ++S dropS n s) ~ s
-    takeDropS zero     s         = refl~ s
-    takeDropS (suc n)  s .headS  = refl
-    takeDropS (suc n)  s .tailS  = takeDropS n (s .tailS)
+    takeDrop  : (n : ℕ) (s : Stream A)
+              → (take n s ++ drop n s) ~ s
+    takeDrop zero     s         = refl~ s
+    takeDrop (suc n)  s .head  = refl
+    takeDrop (suc n)  s .tail  = takeDrop n (s .tail)
 \end{code}
 \end{frame}
 
@@ -599,8 +603,8 @@ Proving bisimulation is just defining a coinductive value of the right type:
           ~ xs
 \end{code}
 \begin{code}[hide]
-      fromStreamInv xs .headS = refl
-      fromStreamInv xs .tailS = fromStreamInv (xs .tailS)
+      fromStreamInv xs .head = refl
+      fromStreamInv xs .tail = fromStreamInv (xs .tail)
 \end{code}
 \end{frame}
 
@@ -663,12 +667,12 @@ For the cubical path type, it is trivial:
 \begin{frame}{Cubical bisimulation}
 The cubical path type serves as a general bisimulation relation for any coinductive type:
 \begin{code}
-  takeDropS  : (n : ℕ) (s : Stream A)
-    → Path (Stream A) (takeS n s ++S dropS n s) s
-  takeDropS zero     s i         = s
-  takeDropS (suc n)  s i .headS  = s .headS
-  takeDropS (suc n)  s i .tailS  =
-    takeDropS n (s .tailS) i
+  takeDrop  : (n : ℕ) (s : Stream A)
+    → Path (Stream A) (take n s ++ drop n s) s
+  takeDrop zero     s i         = s
+  takeDrop (suc n)  s i .head  = s .head
+  takeDrop (suc n)  s i .tail  =
+    takeDrop n (s .tail) i
 \end{code}
 \textbf{Exercise.} Prove that bisimilarity of streams implies path equality.
 \end{frame}

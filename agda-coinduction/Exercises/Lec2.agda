@@ -128,13 +128,13 @@ module Bisimulation where
   record _~_ {A : Set} (s1 s2 : Stream A) : Set where
     coinductive
     field
-      headS  :  s1  .headS  ≡  s2  .headS
-      tailS  :  s1  .tailS  ~  s2  .tailS
+      head  :  s1  .head  ≡  s2  .head
+      tail  :  s1  .tail  ~  s2  .tail
   open _~_ public
 
   refl~ : (s : Stream A) → s ~ s
-  refl~ s .headS = refl
-  refl~ s .tailS = refl~ (s .tailS)
+  refl~ s .head = refl
+  refl~ s .tail = refl~ (s .tail)
 
   fromStreamInv : (xs : Stream A)
     → toStream (fromStream xs) (fromStreamInf xs) ~ xs

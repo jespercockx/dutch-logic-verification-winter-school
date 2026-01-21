@@ -100,9 +100,9 @@ module StreamProcessors where
 
 
   run : SP A B → Stream A → Stream B
-  run (get f) xs = run (f (xs .headS)) (xs .tailS)
-  run (put y sp)  xs .headS  = y
-  run (put y sp)  xs .tailS  = run (sp .force) xs
+  run (get f) xs = run (f (xs .head)) (xs .tail)
+  run (put y sp)  xs .head  = y
+  run (put y sp)  xs .tail  = run (sp .force) xs
 
 
   mutual
@@ -114,7 +114,7 @@ module StreamProcessors where
     sumN (suc n) a = get λ k → sumN n (a + k)
 
   sums-test : List ℕ
-  sums-test = takeS 10 (run sums nats)
+  sums-test = take 10 (run sums nats)
 
   -- C-c C-n StreamProcessors.sums-test
 

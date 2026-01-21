@@ -149,7 +149,7 @@ Since we don't really care about the number of \con{later}s, we can make more th
 \begin{frame}{The partiality monad}
 Instead of making more elements bisimilar, we can quotient the \data{Delay} monad by $x ~ \fun{later}~x$.
 
-This leads to the definition of the \alert{partiality monad} by Altenkirch, Danielsson \& Kraus (FoSSaCS 2017)
+This leads to the definition of the \alert{partiality monad} by Altenkirch, Danielsson \& Kraus (FoSSaC 2017)
 as a \emph{quotient inductive-inductive type} (QIIT).
 \end{frame}
 
@@ -157,6 +157,7 @@ as a \emph{quotient inductive-inductive type} (QIIT).
 
 \begin{code}[hide]
 module StreamProcessors where
+  open Lists using (List; []; _∷_)
   open Guardedness
   open InductiveIdentity
   open GuardedBisimulation
@@ -192,12 +193,12 @@ A \alert{stream processor} describes how to transform a stream of $A$s into a st
 \begin{frame}{Running a stream processor}
 \begin{code}
   run : SP A B → Stream A → Stream B
-  run (get f) xs = run (f (xs .headS)) (xs .tailS)
-  run (put y sp)  xs .headS  = y
-  run (put y sp)  xs .tailS  = run (sp .force) xs
+  run (get f) xs = run (f (xs .head)) (xs .tail)
+  run (put y sp)  xs .head  = y
+  run (put y sp)  xs .tail  = run (sp .force) xs
 
   sum2by2-nats :
-    takeS 5 (run sum2by2 nats)
+    take 5 (run sum2by2 nats)
     ≡ (1 ∷ 5 ∷ 9 ∷ 13 ∷ 17 ∷ [])
   sum2by2-nats = refl
 \end{code}
@@ -236,10 +237,10 @@ If we have a $\data{SP}~A~B$ and a $\data{SP}~B~C$, we can apply them in sequenc
     run (compose p1 p2) s ~ run p2 (run p1 s)
 \end{code}
 \begin{code}[hide]
-  compose-correct (get f) p2 s = compose-correct (f (s .headS)) p2 (s .tailS)
+  compose-correct (get f) p2 s = compose-correct (f (s .head)) p2 (s .tail)
   compose-correct (put y f) (get g) s = compose-correct (f .force) (g y) s
-  compose-correct (put y f) (put z g) s .headS = refl
-  compose-correct (put y f) (put z g) s .tailS = compose-correct (put y f) (g .force) s
+  compose-correct (put y f) (put z g) s .head = refl
+  compose-correct (put y f) (put z g) s .tail = compose-correct (put y f) (g .force) s
 \end{code}
 \end{frame}
 
@@ -295,6 +296,9 @@ module FormalLanguages
 \end{frame}
 
 \begin{frame}{Language membership and tabulation}
+\begin{code}[hide]
+  open Lists using (List; []; _∷_)
+\end{code}
 \begin{code}
   _∋_ : Lang → List A → Bool
   l ∋ [] = l .ν
@@ -344,6 +348,7 @@ The guardedness is obscured by the call to $\fun{∪}$.
 module SizedFormalLanguages
   (A : Set) (_≟_ : DecidableEquality A) where
 
+  open Lists using (List; []; _∷_)
   open import Size
   open InductiveIdentity
   variable i : Size

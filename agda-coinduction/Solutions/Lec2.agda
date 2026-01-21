@@ -53,11 +53,11 @@ module FiniteInfinite where
   open Infinite' public
 
   fromStreamInf : (xs : Stream A) → Infinite (fromStream xs)
-  fromStreamInf xs = -∷ λ where .force → fromStreamInf (xs .tailS)
+  fromStreamInf xs = -∷ λ where .force → fromStreamInf (xs .tail)
 
   toStream : (xs : Colist A) → Infinite xs → Stream A
-  toStream (x ∷ xs) (-∷ inf) .headS = x
-  toStream (x ∷ xs) (-∷ inf) .tailS = toStream (xs .force) (inf .force)
+  toStream (x ∷ xs) (-∷ inf) .head = x
+  toStream (x ∷ xs) (-∷ inf) .tail = toStream (xs .force) (inf .force)
 
   infinite-not-finite : Infinite xs → ¬ (Finite xs)
   infinite-not-finite ()       []
@@ -135,18 +135,18 @@ module Bisimulation where
   record _~_ {A : Set} (s1 s2 : Stream A) : Set where
     coinductive
     field
-      headS  :  s1  .headS  ≡  s2  .headS
-      tailS  :  s1  .tailS  ~  s2  .tailS
+      head  :  s1  .head  ≡  s2  .head
+      tail  :  s1  .tail  ~  s2  .tail
   open _~_ public
 
   refl~ : (s : Stream A) → s ~ s
-  refl~ s .headS = refl
-  refl~ s .tailS = refl~ (s .tailS)
+  refl~ s .head = refl
+  refl~ s .tail = refl~ (s .tail)
 
   fromStreamInv : (xs : Stream A)
     → toStream (fromStream xs) (fromStreamInf xs) ~ xs
-  fromStreamInv xs .headS = refl
-  fromStreamInv xs .tailS = fromStreamInv (xs .tailS)
+  fromStreamInv xs .head = refl
+  fromStreamInv xs .tail = fromStreamInv (xs .tail)
 
 module CubicalBisimulation where
 
@@ -164,6 +164,6 @@ module CubicalBisimulation where
   ≡-to-Path refl = reflP
 
   ~-to-Path : xs ~ ys → Path (Stream A) xs ys
-  ~-to-Path bisim i .headS = ≡-to-Path (bisim .headS) i
-  ~-to-Path bisim i .tailS = ~-to-Path (bisim .tailS) i
+  ~-to-Path bisim i .head = ≡-to-Path (bisim .head) i
+  ~-to-Path bisim i .tail = ~-to-Path (bisim .tail) i
 
