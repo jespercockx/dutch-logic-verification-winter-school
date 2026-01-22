@@ -9,4 +9,4 @@
 
 ## Lecture 3
 * Van den Heuvel and Pérez: *A Gentle Overview of Asynchronous Session-based Concurrency: Deadlock Freedom by Typing* [link](https://doi.org/10.4204/EPTCS.414.1)
-* Van den Heuvel and Pérez: *Asynchronous Session-Based Concurrency: Deadlock-freedom in Cyclic Process Networks* [link]([https://doi.org/10.4204/EPTCS.414.1](https://doi.org/10.46298/lmcs-20(4:6)2024))
+* Van den Heuvel and Pérez: *Asynchronous Session-Based Concurrency: Deadlock-freedom in Cyclic Process Networks* [link](https://doi.org/10.4204/EPTCS.414.1](https://doi.org/10.46298/lmcs-20(4:6)2024)
