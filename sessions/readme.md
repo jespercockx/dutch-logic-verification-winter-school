@@ -1,5 +1,7 @@
 # Additional Pointers and References
 
+Comments and/or questions? Feel free to contact me (j.a.perez[at]rug.nl).
+
 ## Lecture 1
 * Huttel et al.: *Foundations of Session Types and Behavioural Contracts* [doi](https://dl.acm.org/doi/10.1145/2873052)
 * Wadler: *A Taste of Linear Logic* [link](https://homepages.inf.ed.ac.uk/wadler/papers/lineartaste/lineartaste-revised.pdf)
