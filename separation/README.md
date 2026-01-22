@@ -15,7 +15,7 @@ This course consists of three lectures
   [(rocq exercise 3)](https://gitlab.mpi-sws.org/iris/tutorial-popl21/-/blob/master/exercises/ex_03_spinlock.v)
   [(rocq exercise 4)](https://gitlab.mpi-sws.org/iris/tutorial-popl21/-/blob/master/exercises/ex_04_parallel_add.v)
   [(rocq exercise 5)](https://gitlab.mpi-sws.org/iris/tutorial-popl21/-/blob/master/exercises/ex_05_parallel_add_mul.v)
-- Lecture 3 (Friday): Proving type soundness using separation logic
+- Lecture 3: Proving type soundness using separation logic
   [(slides)](lectures/lecture3.pdf)
   [(rocq development)](rocq_lecture3)
 
