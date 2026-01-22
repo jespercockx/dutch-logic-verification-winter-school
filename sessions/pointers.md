@@ -6,7 +6,7 @@
 
 ## Lecture 2
 * Caires et al.: *Towards concurrent type theory* [link](http://www.cs.cmu.edu/~fp/papers/tldi12.pdf)
-* Caires et al.: *Linear logic propositions as session types*  [link](http://www.cs.cmu.edu/~fp/papers/mscs13.pdf)
+* Caires et al.: *Linear logic propositions as session types*  [link](https://web.tecnico.ulisboa.pt/bernardo.toninho/papers/mscs16-sess.pdf)
 
 ## Lecture 3
 * Wadler: *Propositions as Sessions* [link](https://homepages.inf.ed.ac.uk/wadler/papers/propositions-as-sessions/propositions-as-sessions.pdf)
