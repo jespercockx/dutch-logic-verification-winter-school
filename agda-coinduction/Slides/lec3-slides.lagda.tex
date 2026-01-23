@@ -117,15 +117,15 @@ Classically, any $x : \data{Delay}~A$ is either $\fun{never}$ \\ or $\fun{laters
 \textbf{Exercise.} State and prove the second and third monad laws \fun{>>=-now} and \fun{>>=-assoc}.
 \begin{code}[hide]
   >>=-now : (d : Delay A) → d >>= now ~ d
-  >>=-now (now x) = now x
-  >>=-now (later x) = later λ where
+  >>=-now (now x)    = now x
+  >>=-now (later x)  = later λ where
     .force → >>=-now (x .force)
 
   >>=-assoc : (d : Delay A)
     → (f : A → Delay B) (g : B → Delay C)
     → (d >>= f) >>= g ~ d >>= λ x → (f x >>= g)
-  >>=-assoc (now x) f g = refl~ (f x >>= g)
-  >>=-assoc (later d) f g = later λ where
+  >>=-assoc (now x)    f g  = refl~ (f x >>= g)
+  >>=-assoc (later d)  f g  = later λ where
     .force → >>=-assoc (d .force) f g
 \end{code}
 \end{frame}
@@ -193,7 +193,7 @@ A \alert{stream processor} describes how to transform a stream of $A$s into a st
 \begin{frame}{Running a stream processor}
 \begin{code}
   run : SP A B → Stream A → Stream B
-  run (get f) xs = run (f (xs .head)) (xs .tail)
+  run (get f)     xs = run (f (xs .head)) (xs .tail)
   run (put y sp)  xs .head  = y
   run (put y sp)  xs .tail  = run (sp .force) xs
 
@@ -225,18 +225,16 @@ If we have a $\data{SP}~A~B$ and a $\data{SP}~B~C$, we can apply them in sequenc
 \textbf{Exercise.} Do the same with a single processor:
 \begin{code}
   compose : SP A B → SP B C → SP A C
-\end{code}
-\begin{code}[hide]
-  compose (put y f)  (get g)    = compose (f .force) (g y)
-  compose (get f)    p2         = get (λ x → compose (f x) p2)
-  compose p1         (put z g)  = put z (λ where .force → compose p1 (g .force))
-\end{code}
-\begin{code}
+
   compose-correct :
     (p1 : SP A B) (p2 : SP B C) (s : Stream A) →
     run (compose p1 p2) s ~ run p2 (run p1 s)
 \end{code}
 \begin{code}[hide]
+  compose (put y f)  (get g)    = compose (f .force) (g y)
+  compose (get f)    p2         = get (λ x → compose (f x) p2)
+  compose p1         (put z g)  = put z (λ where .force → compose p1 (g .force))
+
   compose-correct (get f) p2 s = compose-correct (f (s .head)) p2 (s .tail)
   compose-correct (put y f) (get g) s = compose-correct (f .force) (g y) s
   compose-correct (put y f) (put z g) s .head = refl
@@ -532,13 +530,13 @@ alternate01 = Zero (λ where .force → One alternate01)
 
 \begin{frame}{References} \footnotesize
 \begin{itemize}
-\item Abel \& Pientka (JFP 2016): \emph{Well-founded recursion with copatterns and sized types.}
-\item Ghani, Hancock \& Pattinson (LMCS 2009): \emph{Representations of stream processors using nested fixed points.}
-\item Capretta (LMCS 2005): \emph{General Recursion Via Coinductive Types.}
-\item Altenkirch, Danielsson \& Kraus (FoSSaCS 2017): \emph{Partiality, Revisited: The Partiality Monad as a Quotient Inductive-Inductive Type.}
+\item Capretta (2005): \emph{General Recursion Via Coinductive Types.}
+\item Ghani, Hancock \& Pattinson (2009): \emph{Representations of stream processors using nested fixed points.}
+\item Capretta (2013): \emph{Wander types: A formalization of coinduction-recursion}
 \item Abel (2016): \emph{Equational Reasoning about Formal Languages in Coalgebraic Style.}
-\item Capretta (): \emph{Wander types: A formalization of coinduction-recursion}
-\item Kidney \& Wu (POPL 2025): \emph{Formalising Graph Algorithms with Coinduction}
+\item Abel \& Pientka (2016): \emph{Well-founded recursion with copatterns and sized types.}
+\item Altenkirch, Danielsson \& Kraus (2017): \emph{Partiality, Revisited: The Partiality Monad as a Quotient Inductive-Inductive Type.}
+\item Kidney \& Wu (2025): \emph{Formalising Graph Algorithms with Coinduction}
 \end{itemize}
 \end{frame}
 

@@ -130,12 +130,12 @@ module FiniteInfinite where
 \end{code}
 \begin{code}
   data Finite {A : Set} : Colist A → Set where
-    [] : Finite []
-    -∷_ : Finite (xs .force) → Finite (x ∷ xs)
+    []   : Finite []
+    -∷_  : Finite (xs .force) → Finite (x ∷ xs)
 
   fromListFin : (xs : List A) → Finite (fromList xs)
-  fromListFin [] = []
-  fromListFin (x ∷ xs) = -∷ fromListFin xs
+  fromListFin []        = []
+  fromListFin (x ∷ xs)  = -∷ fromListFin xs
 \end{code}
 \end{frame}
 
@@ -580,12 +580,12 @@ We need a \alert{coinductive} relation instead:
 Proving bisimulation is just defining a coinductive value of the right type:
 \begin{code}
     refl~ : (s : Stream A) → s ~ s
-    refl~ s .head = refl
-    refl~ s .tail = refl~ (s .tail)
+    refl~ s  .head  = refl
+    refl~ s  .tail  = refl~ (s .tail)
 
     takeDrop  : (n : ℕ) (s : Stream A)
               → (take n s ++ drop n s) ~ s
-    takeDrop zero     s         = refl~ s
+    takeDrop zero     s        = refl~ s
     takeDrop (suc n)  s .head  = refl
     takeDrop (suc n)  s .tail  = takeDrop n (s .tail)
 \end{code}
@@ -669,7 +669,7 @@ The cubical path type serves as a general bisimulation relation for any coinduct
 \begin{code}
   takeDrop  : (n : ℕ) (s : Stream A)
     → Path (Stream A) (take n s ++ drop n s) s
-  takeDrop zero     s i         = s
+  takeDrop zero     s i        = s
   takeDrop (suc n)  s i .head  = s .head
   takeDrop (suc n)  s i .tail  =
     takeDrop n (s .tail) i
